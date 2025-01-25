@@ -4,6 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Registration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
 </head>
 <body>
 
@@ -23,7 +53,12 @@
             if (newUser && newPassword) {
                 localStorage.setItem("user", newUser);
                 localStorage.setItem("pass", newPassword);
-                document.getElementById("regMessage").innerText = "Registration successful! Go to Login.";
+                document.getElementById("regMessage").innerText = "Registration successful! Redirecting to login...";
+                
+                // Redirect to login page after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 2000);
             } else {
                 document.getElementById("regMessage").innerText = "Please fill all fields.";
             }
