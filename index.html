@@ -3,123 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register/Login</title>
+    <title>User Login</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            text-align: center;
             margin: 0;
-            background-color: #f4f4f4;
+            padding: 0;
         }
         .container {
-            background: white;
+            max-width: 400px;
+            margin: 100px auto;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
         }
-        input {
+        input, button {
             width: 100%;
             padding: 10px;
             margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
         }
         button {
-            width: 100%;
-            padding: 10px;
-            background-color: #007BFF;
+            background-color: #28a745;
             color: white;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
         }
         button:hover {
-            background-color: #0056b3;
-        }
-        .error {
-            color: red;
-            display: none;
-        }
-        .toggle-link {
-            color: #007BFF;
-            cursor: pointer;
+            background-color: #218838;
         }
     </style>
 </head>
 <body>
 
-    <div class="container" id="auth-container">
-        <h2 id="form-title">Login</h2>
-
-        <div id="login-form">
-            <input type="text" id="login-username" placeholder="Username">
-            <input type="password" id="login-password" placeholder="Password">
-            <button onclick="loginUser()">Login</button>
-            <p id="login-error" class="error">Invalid username or password!</p>
-            <p>New user? <span class="toggle-link" onclick="showRegister()">Register here</span></p>
-        </div>
-
-        <div id="register-form" style="display:none;">
-            <input type="text" id="register-username" placeholder="Create Username">
-            <input type="password" id="register-password" placeholder="Create Password">
-            <button onclick="registerUser()">Register</button>
-            <p id="register-success" class="error" style="color:green;">Registration successful! Please log in.</p>
-            <p>Already have an account? <span class="toggle-link" onclick="showLogin()">Login here</span></p>
-        </div>
-
+    <div class="container">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Enter Username">
+        <input type="password" id="password" placeholder="Enter Password">
+        <button onclick="login()">Login</button>
+        <p>Don't have an account? <a href="register.html">Register</a></p>
+        <p id="message"></p>
     </div>
 
     <script>
-        // Function to switch to the registration form
-        function showRegister() {
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('register-form').style.display = 'block';
-            document.getElementById('form-title').innerText = 'Register';
-        }
+        function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
 
-        // Function to switch to the login form
-        function showLogin() {
-            document.getElementById('register-form').style.display = 'none';
-            document.getElementById('login-form').style.display = 'block';
-            document.getElementById('form-title').innerText = 'Login';
-        }
-
-        // Register new user
-        function registerUser() {
-            let username = document.getElementById('register-username').value;
-            let password = document.getElementById('register-password').value;
-
-            if (localStorage.getItem(username)) {
-                alert('Username already exists. Try a different one.');
-                return;
-            }
-
-            if (username && password) {
-                localStorage.setItem(username, password);
-                document.getElementById('register-success').style.display = 'block';
-                setTimeout(showLogin, 1000); // Switch to login after successful registration
+            // Simple mock authentication (replace with real backend logic)
+            if (username === "admin" && password === "password") {
+                localStorage.setItem("loggedIn", "true");
+                window.location.href = "gps.html";  // Redirect to GPS tracker page
             } else {
-                alert('Please fill in all fields.');
+                document.getElementById("message").innerText = "Invalid credentials!";
             }
         }
 
-        // Login existing user
-        function loginUser() {
-            let username = document.getElementById('login-username').value;
-            let password = document.getElementById('login-password').value;
-            let storedPassword = localStorage.getItem(username);
-
-            if (storedPassword && storedPassword === password) {
-                alert('Login successful!');
-                window.location.href = "dashboard.html";  // Redirect to dashboard
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-            }
+        // Redirect logged-in users
+        if (localStorage.getItem("loggedIn") === "true") {
+            window.location.href = "gps.html";
         }
     </script>
 

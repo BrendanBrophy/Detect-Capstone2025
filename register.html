@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration</title>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Register</h2>
+        <input type="text" id="newUser" placeholder="Choose a Username">
+        <input type="password" id="newPassword" placeholder="Choose a Password">
+        <button onclick="register()">Register</button>
+        <p id="regMessage"></p>
+    </div>
+
+    <script>
+        function register() {
+            const newUser = document.getElementById("newUser").value;
+            const newPassword = document.getElementById("newPassword").value;
+
+            if (newUser && newPassword) {
+                localStorage.setItem("user", newUser);
+                localStorage.setItem("pass", newPassword);
+                document.getElementById("regMessage").innerText = "Registration successful! Go to Login.";
+            } else {
+                document.getElementById("regMessage").innerText = "Please fill all fields.";
+            }
+        }
+    </script>
+
+</body>
+</html>
