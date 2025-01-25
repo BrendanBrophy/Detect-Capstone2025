@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Metadata for character encoding and responsive design -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Page title -->
+    <title>User Login</title>
+    <style>
+        /* General styling for the page */
+        body {
+            /* Set font style to Arial, fallback to sans-serif */
+            font-family: Arial, sans-serif;
+            /* Center-align all text on the page */
+            text-align: center;
+            /* Remove default margin and padding */
+            margin: 0;
+            padding: 0;
+        }
+        /* Styling for the container holding the login form */
+        .container {
+            /* Set a maximum width for the container */
+            max-width: 400px;
+            /* Center the container */
+            margin: 100px auto;
+            /* Add padding inside the container */
+            padding: 20px;
+            /* Add a light border around the container */
+            border: 1px solid #ccc;
+            /* Add rounded corners to the border */
+            border-radius: 5px;
+            /* Add a subtle shadow effect */
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        /* Styling for input fields and the button */
+        input, button {
+            /* Make the inputs and button fill the container width */
+            width: 100%;
+            /* Add padding for user comfort */
+            padding: 10px;
+            /* Add spacing between elements */
+            margin: 10px 0;
+        }
+        /* Styling for the login button */
+        button {
+            /* Set a green background color */
+            background-color: #28a745;
+            /* Set the text color to white */
+            color: white;
+            /* Remove default borders */
+            border: none;
+            /* Indicate interactivity with a pointer cursor */
+            cursor: pointer;
+        }
+            /* Styling for the button hover state */
+            button:hover {
+                /* Darken the green background slightly */
+                background-color: #218838;
+            }
+    </style>
+</head>
+<body>
+
+    <!-- Login form container -->
+    <div class="container">
+        <h2>Login</h2>
+        <!-- Input field for username -->
+        <input type="text" id="username" placeholder="Enter Username">
+        <!-- Input field for password -->
+        <input type="password" id="password" placeholder="Enter Password">
+        <!-- Button to trigger login functionality -->
+        <button onclick="login()">Login</button>
+        <!-- Link to the registration page -->
+        <p>Don't have an account? <a href="register.html">Register</a></p>
+        <!-- Paragraph to display login status messages -->
+        <p id="message"></p>
+    </div>
+
+    <script>
+        // Function to handle user login
+        function login() {
+            // Get the username and password input values
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            // Simple mock authentication (replace with actual backend logic)
+            if (username === "admin" && password === "password") {
+                // Store login status in localStorage
+                localStorage.setItem("loggedIn", "true");
+                // Redirect the user to the GPS tracker page
+                window.location.href = "gps.html";
+            } else {
+                // Display an error message for invalid credentials
+                document.getElementById("message").innerText = "Invalid credentials!";
+            }
+        }
+
+        // Automatically redirect users who are already logged in
+        if (localStorage.getItem("loggedIn") === "true") {
+            window.location.href = "gps.html";
+        }
+    </script>
+
+</body>
+</html>
+
+
+
+
+
+
+

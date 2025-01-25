@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Metadata for character set and viewport for responsiveness -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Page title -->
+    <title>User Registration</title>
+    <style>
+        /* General body styling */
+        body {
+            /* Set font to Arial, fallback to sans-serif */
+            font-family: Arial, sans-serif;
+            /* Center-align all text on the page */
+            text-align: center;
+            /* Remove default margin and padding */
+            margin: 0;
+            padding: 0;
+        }
+        /* Styling for the container that holds the form */
+        .container {
+            /* Set a maximum width for the container */
+            max-width: 400px;
+            /* Center the container on the page */
+            margin: 100px auto;
+            /* Add padding inside the container */
+            padding: 20px;
+            /* Add a light border */
+            border: 1px solid #ccc;
+            /* Add rounded corners */
+            border-radius: 5px;
+            /* Add a subtle box shadow */
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+        /* Styling for input fields and buttons */
+        input, button {
+            /* Make inputs and buttons fill the container width */
+            width: 100%;
+            /* Add padding for better click/tap experience */
+            padding: 10px;
+            /* Add vertical spacing between elements */
+            margin: 10px 0;
+        }
+        /* Styling for the register button */
+        button {
+            /* Set the background color to green */
+            background-color: #28a745;
+            /* Set the text color to white */
+            color: white;
+            /* Remove the default border */
+            border: none;
+            /* Change the cursor to indicate interactivity */
+            cursor: pointer;
+        }
+            /* Hover state styling for the button */
+            button:hover {
+                /* Darken the background color slightly */
+                background-color: #218838;
+            }
+    </style>
+</head>
+<body>
+
+    <!-- Container for the registration form -->
+    <div class="container">
+        <h2>Register</h2>
+        <!-- Input field for username -->
+        <input type="text" id="newUser" placeholder="Choose a Username">
+        <!-- Input field for password -->
+        <input type="password" id="newPassword" placeholder="Choose a Password">
+        <!-- Button to trigger registration function -->
+        <button onclick="register()">Register</button>
+        <!-- Paragraph to display registration messages -->
+        <p id="regMessage"></p>
+    </div>
+
+    <script>
+        // Function to handle user registration
+        function register() {
+            // Retrieve values from input fields
+            const newUser = document.getElementById("newUser").value;
+            const newPassword = document.getElementById("newPassword").value;
+
+            // Check if both fields are filled
+            if (newUser && newPassword) {
+                // Save the username and password to localStorage
+                localStorage.setItem("user", newUser);
+                localStorage.setItem("pass", newPassword);
+                // Display a success message and indicate redirection
+                document.getElementById("regMessage").innerText = "Registration successful! Redirecting to login...";
+
+                // Redirect to the login page after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 2000);
+            } else {
+                // Display a message prompting the user to fill all fields
+                document.getElementById("regMessage").innerText = "Please fill all fields.";
+            }
+        }
+    </script>
+
+</body>
+</html>
+
+
+
+
