@@ -15,12 +15,26 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\Brendan githib code\dashboard.html" />
-    <None Include="..\..\Brendan githib code\gps.html" />
-    <None Include="..\..\Brendan githib code\index.html" />
-    <None Include="..\..\Brendan githib code\README.md" />
-    <None Include="..\..\Brendan githib code\register.html" />
-    <None Include="..\..\Brendan githib code\script.js" />
-    <None Include="..\..\Brendan githib code\styles.css" />
+    <None Include="..\..\Brendan githib code\dashboard.html">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\Brendan githib code\gps.html">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\Brendan githib code\index.html">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\Brendan githib code\README.md">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\Brendan githib code\register.html">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\Brendan githib code\script.js">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\Brendan githib code\styles.css">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
