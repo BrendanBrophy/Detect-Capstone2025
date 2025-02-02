@@ -115,31 +115,34 @@
 
     // Start tracking the user's location and begin logging every 10 seconds
     function startTracking() {
-      if (navigator.geolocation) {
-        // Toggle button visibility: hide start, show stop
-        document.getElementById('startTrackingBtn').style.display = 'none';
-        document.getElementById('stopTrackingBtn').style.display = 'inline-block';
+        if (navigator.geolocation) {
+            // Clear old data when tracking starts
+            localStorage.setItem("locationHistory", JSON.stringify([]));
 
-        watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
-          enableHighAccuracy: true,
-          maximumAge: 0
-        });
+            // Clear the UI log
+            let logDiv = document.getElementById("locationLog");
+            if (logDiv) logDiv.innerHTML = "";
 
-        // Start logging location every 10 seconds (only if not already running)
-        if (loggingInterval === null) {
-          loggingInterval = setInterval(() => {
-            if (currentCoords) {
-              const logDiv = document.getElementById('locationLog');
-              const now = new Date().toLocaleTimeString();
-              const entry = document.createElement('p');
-              entry.innerText = `${now} - Latitude: ${currentCoords.latitude}, Longitude: ${currentCoords.longitude}`;
-              logDiv.appendChild(entry);
+            // Toggle button visibility
+            document.getElementById('startTrackingBtn').style.display = 'none';
+            document.getElementById('stopTrackingBtn').style.display = 'inline-block';
+
+            watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+                enableHighAccuracy: true,
+                maximumAge: 0
+            });
+
+            // Start logging every 2 seconds
+            if (loggingInterval === null) {
+                loggingInterval = setInterval(() => {
+                    if (currentCoords) {
+                        logLocation(currentCoords.latitude, currentCoords.longitude);
+                    }
+                }, 2000);
             }
-          }, 10000);
+        } else {
+            document.getElementById('status').innerText = "Geolocation is not supported by this browser.";
         }
-      } else {
-        document.getElementById('status').innerText = "Geolocation is not supported by this browser.";
-      }
     }
 
     // Stop tracking the user's location and stop logging updates
@@ -184,5 +187,16 @@
       window.location.href = "index.html";
     }
   </script>
+  
+  <!-- Creating a button for downloading location history -->
+  <button onclick="downloadHistory()">Download Location History</button>
+
+
+
+  
+  <script src="script.js"></script>
+
+  
+
 </body>
 </html>
