@@ -1,155 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Metadata for character encoding and responsive design -->
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Page title -->
-    <title>GPS Tracker</title>
-    <style>
-        /* General styling for the page */
-        body {
-            /* Set the font style to Arial, fallback to sans-serif */
-            font-family: Arial, sans-serif;
-            /* Center-align text on the page */
-            text-align: center;
-            /* Remove default margin and padding */
-            margin: 0;
-            padding: 0;
-        }
-        /* Styling for the map container */
-        #map {
-            /* Make the map container full width */
-            width: 100%;
-            /* Set a fixed height for the map */
-            height: 400px;
-            /* Add spacing above the map */
-            margin-top: 20px;
-            /* Add a light border around the map */
-            border: 1px solid #ccc;
-        }
-        /* Styling for the status message */
-        #status {
-            /* Set a readable font size */
-            font-size: 18px;
-            /* Add spacing above the status text */
-            margin-top: 20px;
-        }
-        /* Styling for the start tracking button */
-        button {
-            /* Add padding for the button */
-            padding: 10px 20px;
-            /* Set a readable font size */
-            font-size: 18px;
-            /* Add spacing above the button */
-            margin-top: 20px;
-            /* Change cursor to pointer for interactivity */
-            cursor: pointer;
-            /* Set the background color to blue */
-            background-color: #007BFF;
-            /* Set the text color to white */
-            color: white;
-            /* Remove default border and add rounded corners */
-            border: none;
-            border-radius: 5px;
-        }
-            /* Hover state styling for the button */
-            button:hover {
-                /* Darken the blue background slightly */
-                background-color: #0056b3;
-            }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPS Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      width: 100%;
+      height: 400px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
+    #status {
+      font-size: 18px;
+      margin-top: 20px;
+    }
+    /* Styling for the location log area */
+    #locationLog {
+      margin: 20px auto;
+      padding: 10px;
+      max-width: 600px;
+      font-size: 16px;
+      text-align: left;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 20px;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    /* Position the logout button in the top right corner */
+    #logoutBtn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #dc3545;
+    }
+    #logoutBtn:hover {
+      background-color: #c82333;
+    }
+  </style>
+  <!-- Include Leaflet CSS and JS for mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
 
-    <!-- Main heading and instructions -->
-    <h1>Live GPS Tracker</h1>
-    <p>Click the button below to start tracking your location.</p>
-    <!-- Button to start tracking location -->
-    <button onclick="startTracking()">Start Tracking</button>
+  <h1>Live GPS Tracker</h1>
+  <p>Click the button below to start tracking your location.</p>
+  
+  <!-- Start and Stop Tracking buttons -->
+  <button id="startTrackingBtn" onclick="startTracking()">Start Tracking</button>
+  <button id="stopTrackingBtn" onclick="stopTracking()" style="display: none;">Stop Tracking</button>
+  
+  <!-- Status message container -->
+  <div id="status">Waiting for location...</div>
+  
+  <!-- Map container -->
+  <div id="map"></div>
+  
+  <!-- Location log container -->
+  <div id="locationLog"></div>
 
-    <!-- Status message container -->
-    <div id="status">Waiting for location...</div>
-    <!-- Map container -->
-    <div id="map"></div>
+  <!-- Logout button -->
+  <button id="logoutBtn" onclick="logout()">Logout</button>
 
-    <script>
-        let map, marker;
+  <script>
+    let map, marker;
+    let currentCoords = null;  // To store the latest coordinates
+    let watchId = null;        // To store the geolocation watch ID
+    let loggingInterval = null; // To store the logging interval
 
-        // Function to initialize the Google Map
-        function initMap(lat, lon) {
-            // Set initial location using latitude and longitude
-            const location = { lat: lat, lng: lon };
-            // Create a new map centered at the location
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 15,
-                center: location,
-            });
-            // Place a marker at the location
-            marker = new google.maps.Marker({
-                position: location,
-                map: map,
-            });
-        }
+    // Function to initialize the map using Leaflet
+    function initializeMap(lat, lng) {
+      map = L.map('map').setView([lat, lng], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      marker = L.marker([lat, lng]).addTo(map)
+                .bindPopup('You are here.')
+                .openPopup();
+    }
 
-        // Function to start tracking the user's location
-        function startTracking() {
-            if (navigator.geolocation) {
-                // Use the watchPosition method to continuously update location
-                navigator.geolocation.watchPosition(updateLocation, handleError, {
-                    enableHighAccuracy: true, // Request high-accuracy location
-                    maximumAge: 0 // Prevent cached location
-                });
-            } else {
-                // Inform the user if their browser does not support geolocation
-                document.getElementById('status').innerText = "Geolocation is not supported by this browser.";
+    // Update location, map, and marker whenever a new position is received
+    function updateLocation(position) {
+      const { latitude, longitude } = position.coords;
+      currentCoords = { latitude, longitude };
+      document.getElementById('status').innerText = `Latitude: ${latitude}, Longitude: ${longitude}`;
+
+      if (!map) {
+        initializeMap(latitude, longitude);
+      } else {
+        marker.setLatLng([latitude, longitude]).update();
+        map.setView([latitude, longitude], 13);
+      }
+    }
+
+    // Start tracking the user's location and begin logging every 10 seconds
+    function startTracking() {
+      if (navigator.geolocation) {
+        // Toggle button visibility: hide start, show stop
+        document.getElementById('startTrackingBtn').style.display = 'none';
+        document.getElementById('stopTrackingBtn').style.display = 'inline-block';
+
+        watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+          enableHighAccuracy: true,
+          maximumAge: 0
+        });
+
+        // Start logging location every 10 seconds (only if not already running)
+        if (loggingInterval === null) {
+          loggingInterval = setInterval(() => {
+            if (currentCoords) {
+              const logDiv = document.getElementById('locationLog');
+              const now = new Date().toLocaleTimeString();
+              const entry = document.createElement('p');
+              entry.innerText = `${now} - Latitude: ${currentCoords.latitude}, Longitude: ${currentCoords.longitude}`;
+              logDiv.appendChild(entry);
             }
+          }, 10000);
         }
+      } else {
+        document.getElementById('status').innerText = "Geolocation is not supported by this browser.";
+      }
+    }
 
-        // Function to update the user's location on the map
-        function updateLocation(position) {
-            // Extract latitude and longitude from the position object
-            let lat = position.coords.latitude;
-            let lon = position.coords.longitude;
+    // Stop tracking the user's location and stop logging updates
+    function stopTracking() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        document.getElementById('status').innerText = "Tracking stopped.";
+        // Toggle button visibility: show start, hide stop
+        document.getElementById('stopTrackingBtn').style.display = 'none';
+        document.getElementById('startTrackingBtn').style.display = 'inline-block';
 
-            // Display the latitude and longitude in the status message
-            document.getElementById('status').innerText = `Latitude: ${lat}, Longitude: ${lon}`;
-
-            // Initialize the map if it doesn't exist yet
-            if (!map) {
-                initMap(lat, lon);
-            } else {
-                // Update the map's center and marker position
-                let location = { lat: lat, lng: lon };
-                map.setCenter(location);
-                marker.setPosition(location);
-            }
+        // Stop the logging interval so the location log no longer updates
+        if (loggingInterval !== null) {
+          clearInterval(loggingInterval);
+          loggingInterval = null;
         }
+      }
+    }
 
-        // Function to handle geolocation errors
-        function handleError(error) {
-            // Handle different types of errors with appropriate messages
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    document.getElementById('status').innerText = "User denied the request for Geolocation.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    document.getElementById('status').innerText = "Location information is unavailable.";
-                    break;
-                case error.TIMEOUT:
-                    document.getElementById('status').innerText = "The request to get user location timed out.";
-                    break;
-                case error.UNKNOWN_ERROR:
-                    document.getElementById('status').innerText = "An unknown error occurred.";
-                    break;
-            }
-        }
-    </script>
+    // Handle geolocation errors
+    function handleError(error) {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          document.getElementById('status').innerText = "User denied the request for Geolocation.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          document.getElementById('status').innerText = "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          document.getElementById('status').innerText = "The request to get user location timed out.";
+          break;
+        case error.UNKNOWN_ERROR:
+          document.getElementById('status').innerText = "An unknown error occurred.";
+          break;
+      }
+    }
 
-    <!-- Google Maps API for map rendering -->
-    <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmMNJkxlzOP8NOHb9kHOhaKJOOWR3GgXA"></script>
-
+    // Logout function: clear login status and redirect to index.html
+    function logout() {
+      localStorage.removeItem("loggedInUser");
+      window.location.href = "index.html";
+    }
+  </script>
 </body>
 </html>
-
-

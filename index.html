@@ -1,112 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Metadata for character encoding and responsive design -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Page title -->
     <title>User Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* General styling for the page */
         body {
-            /* Set font style to Arial, fallback to sans-serif */
-            font-family: Arial, sans-serif;
-            /* Center-align all text on the page */
+            font-family: 'Space Grotesk', sans-serif;
             text-align: center;
-            /* Remove default margin and padding */
             margin: 0;
             padding: 0;
         }
-        /* Styling for the container holding the login form */
         .container {
-            /* Set a maximum width for the container */
             max-width: 400px;
-            /* Center the container */
             margin: 100px auto;
-            /* Add padding inside the container */
             padding: 20px;
-            /* Add a light border around the container */
             border: 1px solid #ccc;
-            /* Add rounded corners to the border */
             border-radius: 5px;
-            /* Add a subtle shadow effect */
             box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
         }
-        /* Styling for input fields and the button */
         input, button {
-            /* Make the inputs and button fill the container width */
-            width: 100%;
-            /* Add padding for user comfort */
+            width: 93%;
             padding: 10px;
-            /* Add spacing between elements */
             margin: 10px 0;
         }
-        /* Styling for the login button */
         button {
-            /* Set a green background color */
             background-color: #28a745;
-            /* Set the text color to white */
             color: white;
-            /* Remove default borders */
             border: none;
-            /* Indicate interactivity with a pointer cursor */
             cursor: pointer;
         }
-            /* Styling for the button hover state */
-            button:hover {
-                /* Darken the green background slightly */
-                background-color: #218838;
-            }
+        button:hover {
+            background-color: #218838;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Login form container -->
-    <div class="container">
-        <h2>Login</h2>
-        <!-- Input field for username -->
-        <input type="text" id="username" placeholder="Enter Username">
-        <!-- Input field for password -->
-        <input type="password" id="password" placeholder="Enter Password">
-        <!-- Button to trigger login functionality -->
-        <button onclick="login()">Login</button>
-        <!-- Link to the registration page -->
-        <p>Don't have an account? <a href="register.html">Register</a></p>
-        <!-- Paragraph to display login status messages -->
-        <p id="message"></p>
-    </div>
+<div class="container">
+    <h2>Login</h2>
+    <input type="text" id="username" placeholder="Enter Username">
+    <input type="password" id="password" placeholder="Enter Password">
+    <button onclick="login()">Login</button>
+    <p id="message"></p>
+</div>
 
-    <script>
-        // Function to handle user login
-        function login() {
-            // Get the username and password input values
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+<script>
+    // Predefined accounts
+    const users = {
+        admin1: "password1",
+        admin2: "password2",
+        admin3: "password3",
+        admin4: "password4",
+        admin5: "password5"
+    };
 
-            // Simple mock authentication (replace with actual backend logic)
-            if (username === "admin" && password === "password") {
-                // Store login status in localStorage
-                localStorage.setItem("loggedIn", "true");
-                // Redirect the user to the GPS tracker page
-                window.location.href = "gps.html";
-            } else {
-                // Display an error message for invalid credentials
-                document.getElementById("message").innerText = "Invalid credentials!";
-            }
-        }
+    // Login function
+    function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
 
-        // Automatically redirect users who are already logged in
-        if (localStorage.getItem("loggedIn") === "true") {
+        if (users[username] === password) {
+            // Store login status
+            localStorage.setItem("loggedInUser", username);
             window.location.href = "gps.html";
+        } else {
+            document.getElementById("message").innerText = "Invalid username or password!";
         }
-    </script>
+    }
+
+    // Redirect if already logged in
+    if (localStorage.getItem("loggedInUser")) {
+        window.location.href = "gps.html";
+    }
+</script>
 
 </body>
 </html>
-
-
-
-
-
-
-

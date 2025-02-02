@@ -1,57 +1,30 @@
-
-
-/* General body styling */
 body {
-    /* Set the font for the document to Arial, falling back to sans-serif if not available */
     font-family: Arial, sans-serif;
-    /* Center-align all text within the body */
     text-align: center;
-    /* Add a margin around the content for spacing */
     margin: 50px;
-    /* Set a light gray background color for the page */
     background-color: #f4f4f4;
 }
 
-/* Styling for heading level 1 */
 h1 {
-    /* Set a dark gray color for the text */
     color: #333;
 }
 
-/* Button styling */
 button {
-    /* Add padding inside the button for comfortable clicking */
     padding: 10px 20px;
-    /* Set a readable font size for the button text */
     font-size: 18px;
-    /* Define the default background color for the button */
-    background-color: #28a745;
-    /* Set the text color to white for contrast */
+    background-color: #007bff;
     color: white;
-    /* Remove default borders and give the button rounded corners */
     border: none;
     border-radius: 5px;
-    /* Change the cursor to a pointer to indicate interactivity */
     cursor: pointer;
 }
 
-    /* Hover state for buttons */
-    button:hover {
-        /* Darken the background color when the user hovers over the button */
-        background-color: #0056b3;
-    }
-
-/* Styling for the element with the ID 'output' */
-#output {
-    /* Add space above the element */
-    margin-top: 20px;
-    /* Set a larger font size for emphasis */
-    font-size: 20px;
-    /* Make the text bold */
-    font-weight: bold;
+button:hover {
+    background-color: #0056b3;
 }
 
-
-
-
-
+#output {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+}
