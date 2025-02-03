@@ -1,7 +1,8 @@
-#Capstone Project
+# Capstone Project
 
-##Git commands
-'''
+## Git commands
+
+```python
 git init
 
 git add .
@@ -13,4 +14,4 @@ git branch -M main
 git remote add origin https://github.com/YOUR_USERNAME/Detect-Capstone2025.git
 
 git push -u origin main
-'''
+```
