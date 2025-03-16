@@ -67,7 +67,17 @@
   <button id="requestPermissionBtn" onclick="requestPermission()">Enable Compass</button>
   <button id="startTrackingBtn" onclick="startTracking()">Start Tracking</button>
   <button id="stopTrackingBtn" onclick="stopTracking()" style="display: none;">Stop Tracking</button>
-  
+  <!-- Button to take a note -->
+  <button id="takeNoteBtn" onclick="showNoteForm()">Take Note</button>
+
+<!-- Note input form (hidden by default) -->
+<div id="noteForm" style="display: none; text-align: center; background: white; padding: 10px; border: 1px solid #ccc; box-shadow: 0 0 5px rgba(0,0,0,0.2);">
+    <h3>Enter a Note</h3>
+    <textarea id="noteText" rows="3" cols="30" placeholder="Type your note here..."></textarea><br>
+    <button onclick="saveNote()">Save Note</button>
+    <button onclick="closeNoteForm()">Cancel</button>
+</div>
+
   <div id="status">Waiting for location...</div>
   <div id="map"></div>
   <div id="locationLog"></div>
@@ -84,17 +94,86 @@
     iconSize: [30, 30],  // Adjust the size to match Find My iPhone
     iconAnchor: [15, 15] // Center the icon properly
 });
+let notes = JSON.parse(localStorage.getItem("geoNotes")) || [];
+
+function showNoteForm() {
+    document.getElementById("noteForm").style.display = "block";
+}
+
+function closeNoteForm() {
+    document.getElementById("noteForm").style.display = "none";
+    document.getElementById("noteText").value = "";
+}
+
+function saveNote() {
+    let noteText = document.getElementById("noteText").value.trim();
+    if (noteText === "") {
+        alert("Please enter a note before saving.");
+        return;
+    }
+
+    if (!currentCoords) {
+        alert("Location not available. Start tracking first.");
+        return;
+    }
+
+    let note = { lat: currentCoords.latitude, lng: currentCoords.longitude, text: noteText };
+    notes.push(note);
+    localStorage.setItem("geoNotes", JSON.stringify(notes));
+
+    addNoteMarker(note);
+    logNoteToTracking(note);
+    closeNoteForm();
+}
+
+// Add a note marker to the map
+function addNoteMarker(note) {
+    L.marker([note.lat, note.lng])
+        .addTo(map)
+        .bindPopup(`<b>Note:</b> ${note.text} <br> <button onclick="deleteNote(${note.lat}, ${note.lng})">Delete</button>`);
+}
+
+// Append note to tracking log
+function logNoteToTracking(note) {
+    let timestamp = new Date().toLocaleTimeString();
+    let noteEntry = `${timestamp} - Note: ${note.text} (Lat: ${note.lat}, Lng: ${note.lng})`;
+
+    let storedHistory = JSON.parse(localStorage.getItem("locationHistory")) || [];
+    storedHistory.push(noteEntry);
+    localStorage.setItem("locationHistory", JSON.stringify(storedHistory));
+
+    let logDiv = document.getElementById("locationLog");
+    if (logDiv) {
+        logDiv.innerHTML += `<p>${noteEntry}</p>`;
+    }
+}
+
+// Delete a note
+function deleteNote(lat, lng) {
+    notes = notes.filter(n => n.lat !== lat || n.lng !== lng);
+    localStorage.setItem("geoNotes", JSON.stringify(notes));
+    location.reload(); // Refresh to remove marker
+}
+
+// Load existing notes on map startup
+function loadNotes() {
+    notes.forEach(note => addNoteMarker(note));
+}
+
+loadNotes();
 
 
     // Initialize the map
     function initializeMap(lat, lng) {
     if (!map) {
-        console.log("Initializing Leaflet map...");
-        map = L.map('map', { preferCanvas: true }).setView([lat, lng], 16);
+        map = L.map('map').setView([lat, lng], 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
     }
+    loadNotes(); // Load stored notes on startup
+}
+
 
     // Ensure the marker is created
     if (!marker) {
@@ -106,7 +185,7 @@
     setTimeout(() => {
         map.invalidateSize();
     }, 500);
-}
+
 
 
 
