@@ -74,17 +74,30 @@ function requestPermission() {
 /**
  * Start listening for device orientation changes (heading)
  */
+let previousHeading = null;
+
 function startCompass() {
     if (!compassActive) {
         window.addEventListener("deviceorientationabsolute", event => {
             if (event.alpha !== null) {
-                userHeading = event.alpha;
-                console.log("Updated Heading:", userHeading);
+                let newHeading = event.alpha;
+
+                // Apply low-pass filtering to smooth changes
+                if (previousHeading !== null) {
+                    userHeading = (previousHeading * 0.8) + (newHeading * 0.2);
+                } else {
+                    userHeading = newHeading;
+                }
+                previousHeading = userHeading;
+
+                document.getElementById("headingDisplay").innerText = `Heading: ${userHeading.toFixed(2)}°`;
+                logHeading(userHeading);
             }
         });
         compassActive = true;
     }
 }
+
 
 
 /**
