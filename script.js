@@ -1,6 +1,5 @@
 // Ensure location history is initialized from localStorage
 let locationHistory = JSON.parse(localStorage.getItem("locationHistory")) || [];
-let userHeading = null;
 let compassActive = false;
 
 /**
@@ -80,23 +79,18 @@ function startCompass() {
     if (!compassActive) {
         window.addEventListener("deviceorientationabsolute", event => {
             if (event.alpha !== null) {
-                let newHeading = event.alpha;
+                userHeading = event.alpha;
 
-                // Apply low-pass filtering to smooth changes
-                if (previousHeading !== null) {
-                    userHeading = (previousHeading * 0.8) + (newHeading * 0.2);
-                } else {
-                    userHeading = newHeading;
+                let arrow = document.querySelector('.custom-user-icon .arrow');
+                if (arrow) {
+                    arrow.style.transform = `rotate(${userHeading}deg)`;
                 }
-                previousHeading = userHeading;
-
-                document.getElementById("headingDisplay").innerText = `Heading: ${userHeading.toFixed(2)}°`;
-                logHeading(userHeading);
             }
         });
         compassActive = true;
     }
 }
+
 
 
 
