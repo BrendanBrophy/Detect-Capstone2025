@@ -56,7 +56,8 @@
     }
   </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
 </head>
 <body>
 
@@ -86,53 +87,94 @@
 
     // Initialize the map
     function initializeMap(lat, lng) {
-        map = L.map('map').setView([lat, lng], 16);
+    if (!map) {
+        console.log("Initializing Leaflet map...");
+        map = L.map('map', { preferCanvas: true }).setView([lat, lng], 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        marker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
     }
+
+    // Ensure the marker is created
+    if (!marker) {
+        console.log("Adding marker at:", lat, lng);
+        marker = L.marker([lat, lng]).addTo(map);
+    }
+
+    // Force the map to refresh
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 500);
+}
+
+
+
+function forceMapRender() {
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 500);
+}
+
+
 
     // Start compass tracking
     function startCompass() {
-        if (typeof compassActive === 'undefined') {
-            window.compassActive = false; // Ensure compassActive is only defined once
-        }
-        if (!compassActive) {
-            window.addEventListener("deviceorientationabsolute", event => {
-                if (event.alpha !== null) {
-                    userHeading = event.alpha;
-                    let arrow = document.querySelector('.custom-user-icon .arrow');
-                    if (arrow) {
-                        arrow.style.transform = `rotate(${userHeading}deg)`;
-                    }
-                }
-            });
-            compassActive = true;
-        }
+    if (typeof compassActive === 'undefined') {
+        window.compassActive = false; // Ensure compassActive is only defined once
     }
+
+    if (!compassActive) {
+        window.addEventListener("deviceorientationabsolute", event => {
+            if (event.alpha !== null) {
+                userHeading = event.alpha;
+                
+                // Update the marker arrow rotation
+                let arrow = document.querySelector('.custom-user-icon .arrow');
+                if (arrow) {
+                    arrow.style.transform = `rotate(${userHeading}deg)`;
+                }
+
+                console.log("Heading updated:", userHeading); // Debugging log
+            }
+        });
+        compassActive = true;
+    }
+}
 
     // Update location
     function updateLocation(position) {
-        const { latitude, longitude } = position.coords;
-        currentCoords = { latitude, longitude, heading: userHeading };
+    const { latitude, longitude } = position.coords;
+    currentCoords = { latitude, longitude, heading: userHeading };
 
-        document.getElementById('status').innerText = 
-            `Latitude: ${latitude}, Longitude: ${longitude}, Heading: ${userHeading.toFixed(2)}°`;
+    console.log("Updated GPS Position:", latitude, longitude); // Debugging log
 
-        if (!marker) {
-            initializeMap(latitude, longitude);
-        } else {
-            marker.setLatLng([latitude, longitude]);
-        }
+    document.getElementById('status').innerText = 
+        `Latitude: ${latitude}, Longitude: ${longitude}, Heading: ${userHeading.toFixed(2)}°`;
 
-        let arrow = document.querySelector('.custom-user-icon .arrow');
-        if (arrow) {
-            arrow.style.transform = `rotate(${userHeading}deg)`;
-        }
-
-        map.setView([latitude, longitude], 16);
+    if (!map) {
+        console.log("Initializing map...");
+        initializeMap(latitude, longitude);
     }
+
+    if (!marker) {
+        console.log("Creating marker...");
+        marker = L.marker([latitude, longitude], { icon: userIcon }).addTo(map);
+    } else {
+        console.log("Updating marker position...");
+        marker.setLatLng([latitude, longitude]);
+    }
+
+    // Rotate the arrow based on heading
+    let arrow = document.querySelector('.custom-user-icon .arrow');
+    if (arrow) {
+        arrow.style.transform = `rotate(${userHeading}deg)`;
+    }
+
+    map.setView([latitude, longitude], 16);
+}
+
+
+
 
     function stopTracking() {
         if (watchId !== null) {
