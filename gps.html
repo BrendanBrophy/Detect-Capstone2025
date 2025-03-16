@@ -79,11 +79,12 @@
 
     // Define a custom circular icon with an arrow
     const userIcon = L.divIcon({
-        className: 'custom-user-icon',
-        html: `<div class="arrow"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-    });
+    className: 'custom-user-icon',
+    html: `<div class="arrow"></div>`,
+    iconSize: [30, 30],  // Adjust the size to match Find My iPhone
+    iconAnchor: [15, 15] // Center the icon properly
+});
+
 
     // Initialize the map
     function initializeMap(lat, lng) {
@@ -124,22 +125,26 @@ function forceMapRender() {
     }
 
     if (!compassActive) {
+        console.log("Starting compass tracking...");
+        
         window.addEventListener("deviceorientationabsolute", event => {
             if (event.alpha !== null) {
                 userHeading = event.alpha;
                 
-                // Update the marker arrow rotation
+                // Rotate the arrow based on heading
                 let arrow = document.querySelector('.custom-user-icon .arrow');
                 if (arrow) {
                     arrow.style.transform = `rotate(${userHeading}deg)`;
                 }
 
-                console.log("Heading updated:", userHeading); // Debugging log
+                console.log("Updated Heading:", userHeading);
             }
         });
+
         compassActive = true;
     }
 }
+
 
     // Update location
     function updateLocation(position) {
@@ -233,33 +238,35 @@ function forceMapRender() {
 
   <script>
     function startTracking() {
-        if (navigator.geolocation) {
-            localStorage.setItem("locationHistory", JSON.stringify([]));
-            document.getElementById("locationLog").innerHTML = "";
+    if (navigator.geolocation) {
+        localStorage.setItem("locationHistory", JSON.stringify([]));
+        document.getElementById("locationLog").innerHTML = "";
 
-            document.getElementById('startTrackingBtn').style.display = 'none';
-            document.getElementById('stopTrackingBtn').style.display = 'inline-block';
+        document.getElementById('startTrackingBtn').style.display = 'none';
+        document.getElementById('stopTrackingBtn').style.display = 'inline-block';
 
-            watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
-                enableHighAccuracy: true,
-                maximumAge: 0
-            });
+        watchId = navigator.geolocation.watchPosition(updateLocation, handleError, {
+            enableHighAccuracy: true,
+            maximumAge: 0
+        });
 
-            if (!compassActive) {
-                startCompass();
-            }
-
-            if (loggingInterval === null) {
-                loggingInterval = setInterval(() => {
-                    if (currentCoords) {
-                        logLocation(currentCoords.latitude, currentCoords.longitude, userHeading);
-                    }
-                }, 2000);
-            }
-        } else {
-            document.getElementById('status').innerText = "Geolocation is not supported by this browser.";
+        if (!compassActive) {
+            console.log("Starting Compass...");
+            startCompass();
         }
+
+        if (loggingInterval === null) {
+            loggingInterval = setInterval(() => {
+                if (currentCoords) {
+                    logLocation(currentCoords.latitude, currentCoords.longitude, userHeading);
+                }
+            }, 2000);
+        }
+    } else {
+        document.getElementById('status').innerText = "Geolocation is not supported by this browser.";
     }
+}
+
   </script>
 
   <button onclick="downloadHistory()">Download Location History</button>
