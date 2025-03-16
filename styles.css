@@ -30,9 +30,9 @@ button:hover {
 }
 
 .custom-user-icon {
-    width: 20px;
-    height: 20px;
-    background-color: rgba(0, 200, 0, 0.6); /* Green circle */
+    width: 30px;
+    height: 30px;
+    background-color: rgba(0, 200, 0, 0.8); /* Green circle */
     border-radius: 50%;
     position: relative;
     border: 2px solid white;
@@ -42,14 +42,15 @@ button:hover {
 .custom-user-icon .arrow {
     width: 0;
     height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 12px solid white;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 16px solid white;
     position: absolute;
-    top: -10px;
-    left: 4px;
+    top: -6px;
+    left: 6px;
     transform-origin: center;
 }
+
 
 #map {
     width: 100%;
