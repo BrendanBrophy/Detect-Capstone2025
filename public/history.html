@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracking History</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+    <h1>Tracking History</h1>
+    <button onclick="clearHistory()">Clear History</button>
+    <button onclick="window.location.href='gps.html'">Go to Map</button>
+
+    <div id="trackingHistory"></div>
+
+    <script>
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem("locationHistory")) || [];
+            let historyDiv = document.getElementById("trackingHistory");
+
+            if (history.length === 0) {
+                historyDiv.innerHTML = "<p>No tracking history available.</p>";
+                return;
+            }
+
+            historyDiv.innerHTML = history.map(entry => `<p>${entry}</p>`).join('');
+        }
+
+        function clearHistory() {
+            localStorage.removeItem("locationHistory");
+            loadHistory();
+        }
+
+        loadHistory();
+    </script>
+
+</body>
+</html>

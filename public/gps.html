@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Tracker | Detect-Capstone2025</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="../src/css/gps.css">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    .tab-nav {
+      display: flex;
+      justify-content: center;
+      margin: 1rem 0;
+      gap: 0.75rem;
+    }
+    .tab-nav button {
+      padding: 0.6rem 1.4rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px 6px 0 0;
+      background-color: #f0f0f0;
+      color: #333;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .tab-nav button:hover {
+      background-color: #ddd;
+    }
+    .tab-nav .active-tab {
+      background-color: #fff;
+      border-bottom: 3px solid #007aff;
+      color: #000;
+    }
+    #trackerTab, #logsTab {
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      background-color: #fff;
+    }
+    .app-utility {
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .app-utility button {
+      background-color: #007aff;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 0.25rem;
+    }
+    .follow-toggle {
+      margin-top: 1rem;
+      text-align: center;
+      font-weight: bold;
+    }
+    #compassLabel {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #ccc;
+      padding: 6px 10px;
+      font-weight: bold;
+      font-size: 1rem;
+      border-radius: 6px;
+      z-index: 999;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="compassLabel">--</div>
+
+  <header class="main-header">
+    <h1>GPS Tracker</h1>
+  </header>
+
+  <nav class="tab-nav">
+    <button id="showTrackerTab" class="active-tab">Tracker</button>
+    <button id="showLogsTab">Logs</button>
+  </nav>
+
+  <main class="tracker-content">
+    <div id="trackerTab">
+      <section class="status-display">
+  <h2>Live Data</h2>
+  <p><strong>Latitude:</strong> <span id="lat">--</span></p>
+  <p><strong>Longitude:</strong> <span id="lng">--</span></p>
+  <p><strong>Heading:</strong> <span id="heading">--</span></p>
+  <p><strong>Direction:</strong> <span id="compassText">--</span></p>
+  <p><strong>Time:</strong> <span id="timestamp">--</span></p>
+</section>
+
+
+      <section class="actions">
+        <button id="markTakeOff">Mark Take-Off Location</button>
+        <div class="note-form">
+          <input type="text" id="noteInput" placeholder="Enter note..." />
+          <button id="dropNote">Drop Note</button>
+        </div>
+        <div class="tracking-controls">
+          <button id="startTracking">Start Tracking</button>
+          <button id="stopTracking" disabled>Stop Tracking</button>
+        </div>
+        <div class="app-utility">
+          <button id="resetApp" style="background-color: #ff4d4d;">Reset App</button>
+          <button id="recenterMap">Recenter Map</button>
+        </div>
+        <div class="follow-toggle">
+          <label>
+            <input type="checkbox" id="followMap" checked>
+            Follow My Location
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <div id="logsTab" style="display: none;">
+      <section class="log-table">
+        <h2>Logged Data</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Lat</th>
+              <th>Lng</th>
+              <th>Heading</th>
+              <th>Note</th>
+              <th>Take-Off</th>
+            </tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+        <div class="export">
+          <button id="exportData">Export as CSV</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../src/js/unifiedTracker.js"></script>
+  <script src="../src/js/noteManager.js"></script>
+  <script src="../src/js/exporter.js"></script>
+  <script>
+    document.getElementById("showTrackerTab").addEventListener("click", () => {
+      document.getElementById("trackerTab").style.display = "block";
+      document.getElementById("logsTab").style.display = "none";
+      document.getElementById("showTrackerTab").classList.add("active-tab");
+      document.getElementById("showLogsTab").classList.remove("active-tab");
+    });
+
+    document.getElementById("showLogsTab").addEventListener("click", () => {
+      document.getElementById("trackerTab").style.display = "none";
+      document.getElementById("logsTab").style.display = "block";
+      document.getElementById("showLogsTab").classList.add("active-tab");
+      document.getElementById("showTrackerTab").classList.remove("active-tab");
+    });
+  </script>
+</body>
+</html>

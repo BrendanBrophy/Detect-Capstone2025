@@ -1,0 +1,46 @@
+/***************************************************************************************************/
+/*  Project:         Detect-Capstone2025
+/*  Description:     Styling for the detection app UI including layout, typography, and color theme.   
+/*  Author:          Brendan Brophy
+/*  Date:            2025-06-01
+/*  (last edited)       
+/*  File:            styles.css
+
+Notes:
+    Detect Colours
+    #444444 - Off-black
+    #efefef - Off-white
+    #08a18b - Dark Green
+    #41eac0 - Seafoam
+    #164668 - Navy
+/***************************************************************************************************/
+
+:root {
+    --color-text: #444444;
+    --color-background: #efefef;
+    --color-primary: #08a18b;
+    --color-accent: #41eac0;
+     --color-dark: #164668;
+}
+
+body {
+    font-family: 'Space Grotesk', sans-serif;
+    text-align: center;
+    margin: 50px;
+    color: var(--color-text);
+    background-color: var(--color-background)
+}
+
+.button {
+    background-color: var(--color-primary);
+    color: white;
+}
+  
+.button:hover {
+    background-color: var(--color-accent);
+  }
+  
+.header {
+    background-color: var(--color-dark);
+    color: white;
+}
