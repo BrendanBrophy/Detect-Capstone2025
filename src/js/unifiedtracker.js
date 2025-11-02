@@ -8,11 +8,16 @@ let autoFollow = true;
 let latestLat = 0;
 let latestLng = 0;
 
+let currentTransportMode = localStorage.getItem('transportMode') || 'Walking';
+
+
 const latEl = document.getElementById("lat");
 const lngEl = document.getElementById("lng");
 const headingEl = document.getElementById("heading");
 const timeEl = document.getElementById("timestamp");
 const logBody = document.getElementById("logBody");
+
+
 
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
@@ -39,6 +44,18 @@ function initMap() {
 
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
+
+
+  const transportModeEl = document.getElementById('transportMode');
+  if (transportModeEl) {
+    transportModeEl.value = currentTransportMode;
+
+    transportModeEl.addEventListener('change', () => {
+      currentTransportMode = transportModeEl.value;
+      localStorage.setItem('transportMode', currentTransportMode);
+    });
+  }
+
 
 document.getElementById("startTracking").addEventListener("click", () => {
   isTracking = true;
@@ -166,7 +183,8 @@ window.updateGPS = function (lat, lng, timestamp) {
     lng: lng,
     heading: currentHeading,
     note: "",
-    takeOff: false
+    takeOff: false,
+    mode: currentTransportMode   
   });
 
   liveMarker.setLatLng([lat, lng]);

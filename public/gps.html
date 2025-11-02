@@ -111,8 +111,17 @@
         </div>
         <div class="app-utility">
           <button id="resetApp" style="background-color: #ff4d4d;">Reset App</button>
+
+          <!-- Mode of Transport dropdown -->
+          <select id="transportMode" class="transport-select">
+            <option>Walking</option>
+            <option>Driving</option>
+            <option>Other</option>
+          </select>
+
           <button id="recenterMap">Recenter Map</button>
         </div>
+
         <div class="follow-toggle">
           <label>
             <input type="checkbox" id="followMap" checked>
@@ -121,6 +130,8 @@
         </div>
       </section>
     </div>
+
+
 
     <div id="logsTab" style="display: none;">
       <section class="log-table">
