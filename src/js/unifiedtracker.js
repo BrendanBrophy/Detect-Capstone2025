@@ -174,6 +174,7 @@ window.updateGPS = function (lat, lng, timestamp) {
     <td>${currentHeading}</td>
     <td>--</td>
     <td>--</td>
+    <td>${currentTransportMode}</td> 
   `;
   logBody.appendChild(row);
 
@@ -205,4 +206,56 @@ window.updateGPS = function (lat, lng, timestamp) {
 function getCompassDirection(deg) {
   const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
   return dirs[Math.round(deg / 45) % 8];
+}
+
+let usingDeviceGPS = false;
+let geoWatchId = null;
+
+const gpsButton = document.getElementById("toggleDeviceGPS");
+
+if (gpsButton) {
+  gpsButton.addEventListener("click", () => {
+    if (!usingDeviceGPS) {
+      // Enable Device GPS mode
+      if ("geolocation" in navigator) {
+        gpsButton.textContent = "Using Device GPS...";
+        gpsButton.style.backgroundColor = "#4CAF50";
+        usingDeviceGPS = true;
+
+        geoWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const timestamp = pos.timestamp;
+            const heading = pos.coords.heading ?? 0;
+
+            // Update heading label and compass
+            updateHeading(heading);
+
+            // ✅ Feed the device coordinates into the existing logging system
+            updateGPS(lat, lng, timestamp);
+          },
+          (err) => {
+            alert("Error accessing device GPS: " + err.message);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 1000,
+            timeout: 10000
+          }
+        );
+      } else {
+        alert("Your browser does not support Geolocation.");
+      }
+    } else {
+      // Disable device GPS mode
+      if (geoWatchId !== null) {
+        navigator.geolocation.clearWatch(geoWatchId);
+        geoWatchId = null;
+      }
+      gpsButton.textContent = "Use Device GPS";
+      gpsButton.style.backgroundColor = "#ffa500";
+      usingDeviceGPS = false;
+    }
+  });
 }
