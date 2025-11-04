@@ -10,14 +10,15 @@ let latestLng = 0;
 
 let currentTransportMode = localStorage.getItem('transportMode') || 'Walking';
 
-
 const latEl = document.getElementById("lat");
 const lngEl = document.getElementById("lng");
 const headingEl = document.getElementById("heading");
 const timeEl = document.getElementById("timestamp");
 const logBody = document.getElementById("logBody");
 
-
+let gpsBuffer = []; // Keep last 3 GPS points for speed calculation
+let usingDeviceGPS = false;
+let geoWatchId = null;
 
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
@@ -45,24 +46,22 @@ function initMap() {
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
 
-
+  // Transport Mode
   const transportModeEl = document.getElementById('transportMode');
   if (transportModeEl) {
     transportModeEl.value = currentTransportMode;
-
     transportModeEl.addEventListener('change', () => {
       currentTransportMode = transportModeEl.value;
       localStorage.setItem('transportMode', currentTransportMode);
     });
   }
 
-
-document.getElementById("startTracking").addEventListener("click", () => {
-  isTracking = true;
-  document.getElementById("stopTracking").disabled = false;
-  document.getElementById("startTracking").disabled = true;
-});
-
+  // Start/Stop tracking
+  document.getElementById("startTracking").addEventListener("click", () => {
+    isTracking = true;
+    document.getElementById("stopTracking").disabled = false;
+    document.getElementById("startTracking").disabled = true;
+  });
 
   document.getElementById("stopTracking").addEventListener("click", () => {
     isTracking = false;
@@ -70,9 +69,11 @@ document.getElementById("startTracking").addEventListener("click", () => {
     document.getElementById("startTracking").disabled = false;
   });
 
+  // Mark Take-Off
   document.getElementById("markTakeOff").addEventListener("click", () => {
     if (!isTracking || trackingLog.length === 0 || hasMarkedTakeOff) return;
     const last = trackingLog[trackingLog.length - 1];
+
     takeOffMarker = L.marker([last.lat, last.lng], {
       title: "Take-Off Location",
       icon: L.icon({
@@ -82,12 +83,15 @@ document.getElementById("startTracking").addEventListener("click", () => {
         popupAnchor: [0, -35]
       })
     }).addTo(map).bindPopup("Take-Off Location").openPopup();
-    last.takeOff = true;
-    hasMarkedTakeOff = true;
+
     const lastRow = logBody.lastChild;
-    if (lastRow) lastRow.children[5].textContent = "✔";
+    if (lastRow) lastRow.children[5].textContent = "\u2714"; // checkmark
+
+    last.takeOff = "\u2714"; 
+    hasMarkedTakeOff = true;
   });
 
+  // Drop Note
   document.getElementById("dropNote").addEventListener("click", () => {
     const noteInput = document.getElementById("noteInput");
     const noteText = noteInput.value.trim();
@@ -95,15 +99,18 @@ document.getElementById("startTracking").addEventListener("click", () => {
     const last = trackingLog[trackingLog.length - 1];
     last.note = noteText;
     L.marker([last.lat, last.lng]).addTo(map).bindPopup("Note: " + noteText).openPopup();
+
     const lastRow = logBody.lastChild;
     if (lastRow) lastRow.children[4].textContent = noteText;
     noteInput.value = "";
   });
 
+  // Follow toggle
   document.getElementById("followMap").addEventListener("change", e => {
     autoFollow = e.target.checked;
   });
 
+  // Recenter Map
   document.getElementById("recenterMap").addEventListener("click", () => {
     if (latestLat !== 0 && latestLng !== 0) {
       map.setView([latestLat, latestLng]);
@@ -112,6 +119,7 @@ document.getElementById("startTracking").addEventListener("click", () => {
     }
   });
 
+  // Reset App
   document.getElementById("resetApp").addEventListener("click", () => {
     if (!confirm("Are you sure you want to reset the app? This will clear the map and all logs.")) return;
 
@@ -136,18 +144,50 @@ document.getElementById("startTracking").addEventListener("click", () => {
     trackingLog = [];
     pathCoordinates = [];
     hasMarkedTakeOff = false;
+    gpsBuffer = [];
   });
+
+  // Device GPS button
+  const gpsButton = document.getElementById("toggleDeviceGPS");
+  if (gpsButton) {
+    gpsButton.addEventListener("click", () => {
+      if (!usingDeviceGPS) {
+        if ("geolocation" in navigator) {
+          gpsButton.textContent = "Using Device GPS...";
+          gpsButton.style.backgroundColor = "#4CAF50";
+          usingDeviceGPS = true;
+
+          geoWatchId = navigator.geolocation.watchPosition(
+            (pos) => {
+              // Only update latest coordinates, do NOT log immediately
+              latestLat = pos.coords.latitude;
+              latestLng = pos.coords.longitude;
+              currentHeading = pos.coords.heading ?? 0;
+              if (headingEl) headingEl.textContent = currentHeading + "°";
+            },
+            (err) => alert("Error accessing device GPS: " + err.message),
+            { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+          );
+        } else alert("Your browser does not support Geolocation.");
+      } else {
+        if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
+        gpsButton.textContent = "Use Device GPS";
+        gpsButton.style.backgroundColor = "#ffa500";
+        usingDeviceGPS = false;
+      }
+    });
+  }
 });
 
-window.updateHeading = function (degrees) {
+// Update heading
+window.updateHeading = function(degrees) {
   currentHeading = degrees;
   if (headingEl) headingEl.textContent = degrees + "°";
-
   const compassLabel = document.getElementById("compassLabel");
   if (compassLabel) compassLabel.textContent = getCompassDirection(degrees);
 
   if (latestLat && latestLng && headingLine) {
-    const distance = 0.0003; // roughly ~30 meters
+    const distance = 0.0003;
     const headingRad = degrees * Math.PI / 180;
     const destLat = latestLat + distance * Math.cos(headingRad);
     const destLng = latestLng + distance * Math.sin(headingRad);
@@ -155,42 +195,63 @@ window.updateHeading = function (degrees) {
   }
 };
 
-window.updateGPS = function (lat, lng, timestamp) {
+// Update GPS & log
+window.updateGPS = function(lat, lng, timestamp) {
   const timeStr = new Date(parseInt(timestamp)).toLocaleTimeString();
-  if (latEl) latEl.textContent = lat.toFixed(6);
-  if (lngEl) lngEl.textContent = lng.toFixed(6);
+  if (latEl) latEl.textContent = lat.toFixed(5);
+  if (lngEl) lngEl.textContent = lng.toFixed(5);
   if (timeEl) timeEl.textContent = timeStr;
 
   if (!isTracking) return;
 
-  latestLat = lat;
-  latestLng = lng;
+  // GPS buffer
+  gpsBuffer.push({ lat, lng, time: timestamp / 1000 });
+  if (gpsBuffer.length > 3) gpsBuffer.shift();
 
+  // Inferred transport
+  let inferredTransport = "--";
+  if (gpsBuffer.length >= 2) {
+    let totalDistance = 0, totalTime = 0;
+    for (let i = 1; i < gpsBuffer.length; i++) {
+      const prev = gpsBuffer[i - 1], curr = gpsBuffer[i];
+      const distance = haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+      const deltaTime = curr.time - prev.time;
+      totalDistance += distance;
+      totalTime += deltaTime;
+    }
+    const avgSpeedKmh = (totalDistance / totalTime) * 3.6;
+    inferredTransport = avgSpeedKmh < 6 ? "Walking" : "Driving";
+  }
+
+  // Add table row
   const row = document.createElement("tr");
   row.innerHTML = `
     <td>${timeStr}</td>
-    <td>${lat.toFixed(6)}</td>
-    <td>${lng.toFixed(6)}</td>
+    <td>${lat.toFixed(5)}</td>
+    <td>${lng.toFixed(5)}</td>
     <td>${currentHeading}</td>
     <td>--</td>
     <td>--</td>
-    <td>${currentTransportMode}</td> 
+    <td>${currentTransportMode}</td>
+    <td>${inferredTransport}</td>
   `;
   logBody.appendChild(row);
 
+  // Save to tracking log
   trackingLog.push({
     timestamp: timeStr,
-    lat: lat,
-    lng: lng,
+    lat,
+    lng,
     heading: currentHeading,
     note: "",
-    takeOff: false,
-    mode: currentTransportMode   
+    takeOff: "",
+    transport: currentTransportMode,
+    inferredTransport
   });
 
+  // Update map
   liveMarker.setLatLng([lat, lng]);
   if (autoFollow) map.setView([lat, lng]);
-
   pathCoordinates.push([lat, lng]);
   pathLine.setLatLngs(pathCoordinates);
 
@@ -203,59 +264,32 @@ window.updateGPS = function (lat, lng, timestamp) {
   }).addTo(map);
 };
 
-function getCompassDirection(deg) {
-  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-  return dirs[Math.round(deg / 45) % 8];
+// Periodic logging every 5 seconds
+setInterval(() => {
+  if (isTracking && latestLat && latestLng) {
+    updateGPS(latestLat, latestLng, Date.now());
+  }
+}, 5000); // log strictly every 5 seconds
+
+// Haversine distance in meters
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  lat1 = parseFloat(lat1.toFixed(5));
+  lon1 = parseFloat(lon1.toFixed(5));
+  lat2 = parseFloat(lat2.toFixed(5));
+  lon2 = parseFloat(lon2.toFixed(5));
+
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) *
+            Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
-let usingDeviceGPS = false;
-let geoWatchId = null;
-
-const gpsButton = document.getElementById("toggleDeviceGPS");
-
-if (gpsButton) {
-  gpsButton.addEventListener("click", () => {
-    if (!usingDeviceGPS) {
-      // Enable Device GPS mode
-      if ("geolocation" in navigator) {
-        gpsButton.textContent = "Using Device GPS...";
-        gpsButton.style.backgroundColor = "#4CAF50";
-        usingDeviceGPS = true;
-
-        geoWatchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const timestamp = pos.timestamp;
-            const heading = pos.coords.heading ?? 0;
-
-            // Update heading label and compass
-            updateHeading(heading);
-
-            // ✅ Feed the device coordinates into the existing logging system
-            updateGPS(lat, lng, timestamp);
-          },
-          (err) => {
-            alert("Error accessing device GPS: " + err.message);
-          },
-          {
-            enableHighAccuracy: true,
-            maximumAge: 1000,
-            timeout: 10000
-          }
-        );
-      } else {
-        alert("Your browser does not support Geolocation.");
-      }
-    } else {
-      // Disable device GPS mode
-      if (geoWatchId !== null) {
-        navigator.geolocation.clearWatch(geoWatchId);
-        geoWatchId = null;
-      }
-      gpsButton.textContent = "Use Device GPS";
-      gpsButton.style.backgroundColor = "#ffa500";
-      usingDeviceGPS = false;
-    }
-  });
+function getCompassDirection(deg) {
+  const dirs = ["N","NE","E","SE","S","SW","W","NW"];
+  return dirs[Math.round(deg / 45) % 8];
 }
