@@ -268,4 +268,31 @@
   .note-input-wrap {
     max-width: none;
   }
+}.note-row{
+  display:flex; align-items:center; gap:10px; width:100%;
 }
+
+.note-input-wrap{
+  position:relative; display:inline-flex; flex:1; min-width:0;
+}
+.note-input-wrap input{ width:100%; padding-right:40px; }
+
+.mic-icon{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  font-size:1.2rem; cursor:pointer; color:#164668; transition:transform .1s,color .2s;
+}
+.mic-icon:hover{ transform:translateY(-50%) scale(1.15); color:#08a18b; }
+.mic-icon.recording{ color:#e74c3c; }
+
+.note-lang{
+  width:84px; min-width:74px;
+  padding:8px 10px;
+  border:1px solid #ccc; border-radius:6px; background:#fff; color:#444;
+  font-weight:600; text-align:center;
+}
+
+@media (max-width:600px){
+  .note-row{ flex-direction:column; align-items:stretch; }
+  .note-lang{ width:100%; }
+}
+
