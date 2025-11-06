@@ -107,21 +107,18 @@
           <button id="dropNote">Drop Note</button>
         </div>
         -->
-        <div class="note-form">
-          <div class="note-input-wrap">
-            <input type="text" id="noteInput" placeholder="Enter note or use the mic…" />
-            <button id="micBtn" type="button" class="mic-btn" aria-pressed="false" title="Voice input">🎤</button>
-          </div>
-          <button id="dropNote">Drop Note</button>
-
-          <!-- optional language chooser + status line -->
-          <select id="noteLang" class="transport-select" title="Recognition language" style="margin-top:.5rem;">
-            <option value="en-CA" selected>English (Canada)</option>
-            <option value="en-US">English (US)</option>
-            <option value="fr-CA">Français (Canada)</option>
-          </select>
-          <p id="micStatus" class="mic-status"></p>
+        <div class="note-input-wrap">
+          <input type="text" id="noteInput" placeholder="Enter note or use the mic…" />
+          <span id="micBtn" class="mic-icon" title="Voice input">🎤</span>
         </div>
+        <button id="dropNote">Drop Note</button>
+
+        <select id="noteLang" class="transport-select" title="Recognition language" style="margin-top:.5rem;">
+          <option value="en-CA" selected>English (Canada)</option>
+          <option value="en-US">English (US)</option>
+          <option value="fr-CA">Français (Canada)</option>
+        </select>
+
         <div class="tracking-controls">
           <button id="startTracking">Start Tracking</button>
           <button id="stopTracking" disabled>Stop Tracking</button>
