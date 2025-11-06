@@ -101,10 +101,30 @@
 
       <section class="actions">
         <button id="markTakeOff">Mark Take-Off Location</button>
+        <!--
         <div class="note-form">
           <input type="text" id="noteInput" placeholder="Enter note..." />
           <button id="dropNote">Drop Note</button>
         </div>
+        -->
+        <div class="note-form">
+          <div class="note-row">
+            <div class="note-input-wrap">
+              <input type="text" id="noteInput" placeholder="Enter note or use the mic…" />
+              <span id="micBtn" class="mic-icon" title="Voice input">🎤</span>
+            </div>
+
+            <!-- compact language box on the right -->
+            <select id="noteLang" class="note-lang" title="Recognition language">
+              <option value="en-CA" selected>EN-CA</option>
+              <option value="en-US">EN-US</option>
+              <option value="fr-CA">FR-CA</option>
+            </select>
+          </div>
+
+          <button id="dropNote">Drop Note</button>
+        </div>
+
         <div class="tracking-controls">
           <button id="startTracking">Start Tracking</button>
           <button id="stopTracking" disabled>Stop Tracking</button>

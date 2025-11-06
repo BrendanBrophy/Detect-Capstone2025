@@ -293,3 +293,59 @@ function getCompassDirection(deg) {
   const dirs = ["N","NE","E","SE","S","SW","W","NW"];
   return dirs[Math.round(deg / 45) % 8];
 }
+// --- Voice-to-Text (mic icon + small language box) ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const micBtn = document.getElementById("micBtn");
+const noteInput = document.getElementById("noteInput");
+const noteLang = document.getElementById("noteLang");
+
+let recognition = null;
+let listening = false;
+let finalBuffer = "";
+
+if (SpeechRecognition && micBtn && noteInput) {
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = (noteLang && noteLang.value) || "en-CA";
+
+  noteLang?.addEventListener("change", () => {
+    recognition.lang = noteLang.value;
+    if (listening) {
+      recognition.stop();
+      setTimeout(() => recognition.start(), 150);
+    }
+  });
+
+  micBtn.addEventListener("click", () => {
+    if (!listening) {
+      finalBuffer = "";
+      recognition.start();
+      micBtn.classList.add("recording");
+      listening = true;
+    } else {
+      recognition.stop();
+      micBtn.classList.remove("recording");
+      listening = false;
+    }
+  });
+
+  recognition.addEventListener("result", (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) finalBuffer += (r[0].transcript || "") + " ";
+      else interim += (r[0].transcript || "");
+    }
+    noteInput.value = (finalBuffer + interim).trim();
+  });
+
+  recognition.addEventListener("end", () => {
+    if (listening) {
+      try { recognition.start(); } catch {}
+    } else {
+      micBtn.classList.remove("recording");
+    }
+  });
+}
+
