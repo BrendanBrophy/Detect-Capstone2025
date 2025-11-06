@@ -222,3 +222,50 @@
     outline: 2px solid rgba(0, 123, 255, 0.5);
     outline-offset: 2px;
   }
+
+/* --- Voice-to-Text Mic Button Styles --- */
+.note-input-wrap {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  max-width: 520px;
+}
+
+.note-input-wrap input {
+  padding-right: 44px; /* space for mic */
+  width: 100%;
+}
+
+.mic-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  background: #164668; /* same blue as header */
+  color: #fff;
+  font-weight: 600;
+}
+
+.mic-btn:hover {
+  filter: brightness(0.9);
+}
+
+.mic-btn.recording {
+  background: #e74c3c; /* red while recording */
+}
+
+.mic-status {
+  color: #666;
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .note-input-wrap {
+    max-width: none;
+  }
+}
