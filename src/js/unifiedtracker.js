@@ -293,66 +293,46 @@ function getCompassDirection(deg) {
   const dirs = ["N","NE","E","SE","S","SW","W","NW"];
   return dirs[Math.round(deg / 45) % 8];
 }
-
-// --- Voice-to-Text for #noteInput ---
+// --- Voice-to-Text (mic icon + small language box) ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-// Grab UI (they exist in your HTML from earlier step)
-const micBtn    = document.getElementById("micBtn");
+const micBtn = document.getElementById("micBtn");
 const noteInput = document.getElementById("noteInput");
-const noteLang  = document.getElementById("noteLang");   // optional <select>
-const micStatus = document.getElementById("micStatus");  // optional <p>
+const noteLang = document.getElementById("noteLang");
 
 let recognition = null;
 let listening = false;
 let finalBuffer = "";
 
-function setMicUI(active, msg){
-  listening = active;
-  if (micBtn){
-    micBtn.classList.toggle("recording", active);
-    micBtn.setAttribute("aria-pressed", String(active));
-    micBtn.textContent = active ? "⏹️" : "🎤";
-  }
-  if (micStatus) micStatus.textContent = msg || "";
-}
-
-// Guard: if unsupported or elements missing, disable mic button gracefully
-if (!SpeechRecognition || !micBtn || !noteInput){
-  if (micBtn) micBtn.disabled = true;
-  if (micStatus) micStatus.textContent = "Speech not supported. Try Chrome/Edge.";
-} else {
+if (SpeechRecognition && micBtn && noteInput) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = (noteLang && noteLang.value) || "en-CA";
 
-  // Change language on the fly
   noteLang?.addEventListener("change", () => {
     recognition.lang = noteLang.value;
-    if (listening){ recognition.stop(); setTimeout(() => recognition.start(), 150); }
-  });
-
-  // Toggle start/stop
-  micBtn.addEventListener("click", () => {
-    if (!listening){
-      finalBuffer = "";
-      try {
-        recognition.start();
-        setMicUI(true, "Listening… speak clearly.");
-      } catch (e) {
-        setMicUI(false, `Mic error: ${e?.message || e}`);
-      }
-    } else {
+    if (listening) {
       recognition.stop();
-      setMicUI(false, "Stopped.");
+      setTimeout(() => recognition.start(), 150);
     }
   });
 
-  // Stream interim + final text into the input
+  micBtn.addEventListener("click", () => {
+    if (!listening) {
+      finalBuffer = "";
+      recognition.start();
+      micBtn.classList.add("recording");
+      listening = true;
+    } else {
+      recognition.stop();
+      micBtn.classList.remove("recording");
+      listening = false;
+    }
+  });
+
   recognition.addEventListener("result", (e) => {
     let interim = "";
-    for (let i = e.resultIndex; i < e.results.length; i++){
+    for (let i = e.resultIndex; i < e.results.length; i++) {
       const r = e.results[i];
       if (r.isFinal) finalBuffer += (r[0].transcript || "") + " ";
       else interim += (r[0].transcript || "");
@@ -360,15 +340,12 @@ if (!SpeechRecognition || !micBtn || !noteInput){
     noteInput.value = (finalBuffer + interim).trim();
   });
 
-  // If it ends unexpectedly while listening (mobile), try to resume
   recognition.addEventListener("end", () => {
-    if (listening){
-      try { recognition.start(); } catch { setMicUI(false, "Mic idle."); }
+    if (listening) {
+      try { recognition.start(); } catch {}
     } else {
-      setMicUI(false, "Mic idle.");
+      micBtn.classList.remove("recording");
     }
   });
-
-  recognition.addEventListener("error", (e) => setMicUI(false, `Mic error: ${e.error}`));
 }
 
