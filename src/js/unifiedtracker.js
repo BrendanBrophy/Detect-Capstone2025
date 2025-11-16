@@ -20,6 +20,11 @@ let gpsBuffer = []; // Keep last 3 GPS points for speed calculation
 let usingDeviceGPS = false;
 let geoWatchId = null;
 
+//ServiceWorker file call for map update
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(console.error);
+}
+
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
 
@@ -348,136 +353,156 @@ if (SpeechRecognition && micBtn && noteInput) {
     }
   });
 }
+
+//Download Map Update
+// ---- Offline pre-download helpers (main JS) ----
+
+let currentAreaId = null;
+
 const TILE_SIZE = 256;
-function lonLatToTileXY(lon, lat, z){
+
+// lon/lat → XYZ tile index (Web Mercator)
+function lonLatToTileXY(lon, lat, z) {
   const n = 2 ** z;
   const x = Math.floor(((lon + 180) / 360) * n);
-  const latRad = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(latRad)+1/Math.cos(latRad))/Math.PI)/2 * n);
-  return {x, y};
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(
+    (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n
+  );
+  return { x, y };
 }
-function metersToLngLatDelta(radius_m, lat){
-  const dLat = (radius_m / 111320) * 1;        // ~ meters per deg latitude
-  const dLng = (radius_m / (111320 * Math.cos(lat*Math.PI/180)));
-  return {dLat, dLng};
+
+// radius in meters → approx deg lat/lng at given latitude
+function metersToLngLatDelta(radius_m, lat) {
+  const dLat = radius_m / 111320; // ~meters per degree latitude
+  const dLng = radius_m / (111320 * Math.cos((lat * Math.PI) / 180));
+  return { dLat, dLng };
 }
-function tilesInCircle(center, radius_m, z){
-  const {lng, lat} = center;
-  const {dLat, dLng} = metersToLngLatDelta(radius_m, lat);
-  const min = {lng: lng - dLng, lat: lat - dLat};
-  const max = {lng: lng + dLng, lat: lat + dLat};
+
+// haversine in meters (separate from your existing haversineDistance)
+function offlineHaversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// all tiles whose centers fall inside a circle
+function tilesInCircle(center, radius_m, z) {
+  const { lng, lat } = center;
+  const { dLat, dLng } = metersToLngLatDelta(radius_m, lat);
+  const min = { lng: lng - dLng, lat: lat - dLat };
+  const max = { lng: lng + dLng, lat: lat + dLat };
+
   const tMin = lonLatToTileXY(min.lng, max.lat, z);
   const tMax = lonLatToTileXY(max.lng, min.lat, z);
+
   const tiles = [];
-  for(let x=tMin.x; x<=tMax.x; x++){
-    for(let y=tMin.y; y<=tMax.y; y++){
-      // keep tiles whose center falls inside the circle
-      const n = 2**z;
-      const lonT = x/n*360 - 180 + 180/n;
-      const latRad = Math.atan(Math.sinh(Math.PI*(1 - 2*(y+0.5)/n)));
-      const latT = latRad*180/Math.PI;
-      const d = haversine(lat, lng, latT, lonT);
-      if(d <= radius_m) tiles.push({z,x,y});
+  for (let x = tMin.x; x <= tMax.x; x++) {
+    for (let y = tMin.y; y <= tMax.y; y++) {
+      const n = 2 ** z;
+      const lonT = (x / n) * 360 - 180 + 180 / n;
+      const latRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / n)));
+      const latT = (latRad * 180) / Math.PI;
+      const d = offlineHaversine(lat, lng, latT, lonT);
+      if (d <= radius_m) tiles.push({ z, x, y });
     }
   }
   return tiles;
 }
-function haversine(lat1, lon1, lat2, lon2){
-  const R=6371000, toRad = d=>d*Math.PI/180;
-  const dLat = toRad(lat2-lat1), dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return 2*R*Math.asin(Math.sqrt(a));
-}
-const AVG_TILE_BYTES_DEFAULT = 120_000; // tweak per provider
-async function buildTileList(center, radius_m, zMin, zMax, urlTemplate){
+
+const AVG_TILE_BYTES_DEFAULT = 120_000; // tweak for your provider
+
+// build list of tile URLs to cache
+async function buildTileList(center, radius_m, zMin, zMax, urlTemplate) {
   const urls = [];
-  for(let z=zMin; z<=zMax; z++){
-    for(const {x,y} of tilesInCircle(center, radius_m, z)){
+  for (let z = zMin; z <= zMax; z++) {
+    for (const { x, y } of tilesInCircle(center, radius_m, z)) {
       const url = urlTemplate
-        .replace('{z}', z)
-        .replace('{x}', x)
-        .replace('{y}', y);
-      urls.push({z,x,y,url});
+        .replace("{z}", z)
+        .replace("{x}", x)
+        .replace("{y}", y);
+      urls.push(url);
     }
   }
   return urls;
 }
-function estimateBytes(tileCount, avg=AVG_TILE_BYTES_DEFAULT){
+
+function estimateBytes(tileCount, avg = AVG_TILE_BYTES_DEFAULT) {
   return tileCount * avg;
 }
-export async function predownloadArea(opts){
-  const {center, radius_m, zMin, zMax, urlTemplate, areaId} = opts;
-  const tiles = await buildTileList(center, radius_m, zMin, zMax, urlTemplate);
-  const est = estimateBytes(tiles.length);
-  // persist manifest stub
-  await db.put('OfflineAreas', { id: areaId, ...opts, tileCount: tiles.length, estBytes: est, status:'pending', createdAt: Date.now() });
-  // send to SW
-  navigator.serviceWorker.controller.postMessage({ type:'CACHE_TILES', areaId, tiles });
+
+// main entry: called from your UI when user confirms download
+async function predownloadArea(options) {
+  const { areaId, center, radius_m, zMin, zMax, urlTemplate } = options;
+
+  if (!("serviceWorker" in navigator)) {
+    alert("Service worker not supported in this browser.");
+    return;
+  }
+
+  const urls = await buildTileList(center, radius_m, zMin, zMax, urlTemplate);
+  const estBytes = estimateBytes(urls.length);
+  updateEstimate(estBytes); // you can implement this to update the UI
+
+  const reg = await navigator.serviceWorker.ready;
+  if (!reg.active) {
+    alert("Service worker not active yet. Try again in a moment.");
+    return;
+  }
+
+  reg.active.postMessage({
+    type: "CACHE_TILES",
+    areaId,
+    urls
+  });
 }
-const CACHE_NAME = 'satellite-tiles-v1';
-self.addEventListener('message', async (evt)=>{
-  const msg = evt.data;
-  if(msg?.type === 'CACHE_TILES'){
-    const {tiles, areaId} = msg;
-    const clientsArr = await self.clients.matchAll({type:'window'});
-    const client = clientsArr[0];
-    const controller = new AbortController();
-    let done=0, observedBytes=0, sample=0;
-    const cache = await caches.open(CACHE_NAME);
-    for(const t of tiles){
-      try{
-        const res = await fetch(t.url, {signal: controller.signal});
-        if(res.ok){
-          await cache.put(t.url, res.clone());
-          // update avg size from first 20 tiles
-          if(sample<20){ observedBytes += Number(res.headers.get('content-length'))||0; sample++; }
-        }
-      }catch(_){}
-      done++;
-      client?.postMessage({type:'CACHE_PROGRESS', areaId, done, total: tiles.length,
-        avgBytes: sample? Math.round(observedBytes/sample) : null});
-    }
-    client?.postMessage({type:'CACHE_DONE', areaId});
+
+// helper to start from current map view (you can call this from your modal)
+function startPreDownloadFromMap(radiusKm, zMin, zMax, urlTemplate) {
+  if (!map) {
+    console.error("Map not initialized");
+    return;
   }
-});
-self.addEventListener('fetch', (evt)=>{
-  const url = new URL(evt.request.url);
-  // satellite tile domains → try cache first
-  if(url.pathname.match(/\/tiles\/satellite\/.*\.(jpg|png|webp)$/)){
-    evt.respondWith((async()=>{
-      const cache = await caches.open('satellite-tiles-v1');
-      const hit = await cache.match(evt.request);
-      if(hit) return hit;
-      try{
-        const res = await fetch(evt.request);
-        if(res.ok) cache.put(evt.request, res.clone());
-        return res;
-      }catch(_){
-        return caches.match('/offline-tile.png'); // tiny fallback
-      }
-    })());
-  }
-});
-let currentAreaId = crypto.randomUUID();
-function onStartDownload(){
-  const center = map.getCenter(); // {lng, lat}
-  const radius_m = Number(radiusInput.value) * 1000; // km → m
-  const zMin = Number(zMinInput.value), zMax = Number(zMaxInput.value);
+  const center = map.getCenter();
+  currentAreaId = crypto.randomUUID();
+
+  showProgress(0); // simple UI hook – implement as you like
+
   predownloadArea({
     areaId: currentAreaId,
-    center: {lng:center.lng, lat:center.lat},
-    radius_m, zMin, zMax,
-    urlTemplate: SAT_URL_TEMPLATE // e.g., 'https://tiles.yourcdn/sat/{z}/{x}/{y}.webp'
+    center: { lng: center.lng, lat: center.lat },
+    radius_m: radiusKm * 1000,
+    zMin,
+    zMax,
+    urlTemplate
   });
-  showProgress(0);
 }
-navigator.serviceWorker.addEventListener('message', (evt)=>{
-  const {type, areaId, done, total, avgBytes} = evt.data || {};
-  if(areaId !== currentAreaId) return;
-  if(type==='CACHE_PROGRESS'){
-    if(avgBytes) updateEstimate(avgBytes*total);
-    updateProgress((done/total)*100);
-  }
-  if(type==='CACHE_DONE'){ markAreaReady(areaId); }
-});
+
+// listen for SW progress messages (call once on startup)
+function setupPreDownloadMessaging() {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker.addEventListener("message", (evt) => {
+    const { type, areaId, done, total } = evt.data || {};
+    if (!currentAreaId || areaId !== currentAreaId) return;
+
+    if (type === "CACHE_PROGRESS") {
+      const pct = total ? (done / total) * 100 : 0;
+      updateProgress(pct); // your UI hook
+    } else if (type === "CACHE_DONE") {
+      markAreaReady(); // your UI hook
+    }
+  });
+}
+
+// expose helpers if you want to call from HTML
+window.startPreDownloadFromMap = startPreDownloadFromMap;
+window.setupPreDownloadMessaging = setupPreDownloadMessaging;
 
