@@ -226,18 +226,22 @@ window.addEventListener("DOMContentLoaded", () => {
           gpsButton.textContent = "Using Device GPS...";
           gpsButton.style.backgroundColor = "#4CAF50";
           usingDeviceGPS = true;
-
           geoWatchId = navigator.geolocation.watchPosition(
             (pos) => {
-              // Only update latest coordinates, do NOT log immediately
               latestLat = pos.coords.latitude;
               latestLng = pos.coords.longitude;
               currentHeading = pos.coords.heading ?? 0;
+
               if (headingEl) headingEl.textContent = currentHeading + "°";
+
+              // update marker + map even if not tracking
+              if (liveMarker) liveMarker.setLatLng([latestLat, latestLng]);
+              if (autoFollow && map) map.setView([latestLat, latestLng]);
             },
             (err) => alert("Error accessing device GPS: " + err.message),
             { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
           );
+          
         } else alert("Your browser does not support Geolocation.");
       } else {
         if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
