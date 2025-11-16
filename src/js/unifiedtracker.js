@@ -20,6 +20,8 @@ let gpsBuffer = []; // Keep last 3 GPS points for speed calculation
 let usingDeviceGPS = false;
 let geoWatchId = null;
 
+let offlineAreaCircle = null;
+
 //ServiceWorker file call for map update
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(console.error);
@@ -28,7 +30,7 @@ if ("serviceWorker" in navigator) {
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
@@ -48,6 +50,25 @@ function initMap() {
   }).addTo(map);
 }
 
+//Function to draw a circle radius function drawOfflineRadius(centerLatLng, radiusMeters) {
+  if (!map) return;
+
+  if (offlineAreaCircle) {
+    map.removeLayer(offlineAreaCircle);
+  }
+
+  offlineAreaCircle = L.circle(centerLatLng, {
+    radius: radiusMeters,
+    color: "#08a18b",
+    weight: 2,
+    fillColor: "#08a18b",
+    fillOpacity: 0.08
+  }).addTo(map);
+
+  // Optional: zoom map so the whole circle is visible
+  map.fitBounds(offlineAreaCircle.getBounds(), { padding: [20, 20] });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
 
@@ -55,10 +76,31 @@ window.addEventListener("DOMContentLoaded", () => {
   const preBtn       = document.getElementById("preDownloadBtn");
   const preModal     = document.getElementById("preDownloadModal");
   const preCancelBtn = document.getElementById("preCancelBtn");
-  const preStartBtn  = document.getElementById("preStartBtn");
   const preRadius    = document.getElementById("preRadius");
   const preZoomMin   = document.getElementById("preZoomMin");
   const preZoomMax   = document.getElementById("preZoomMax");
+
+  preStartBtn?.addEventListener("click", () => {
+    const radiusKm = Number(preRadius.value)  || 2;
+    const zMin     = Number(preZoomMin.value) || 13;
+    const zMax     = Number(preZoomMax.value) || 17;
+
+    const center = map.getCenter();
+
+    // 1) draw circle on the map
+    drawOfflineRadius([center.lat, center.lng], radiusKm * 1000);
+
+    // 2) start downloading tiles for that area
+    startPreDownloadFromMap(
+      radiusKm,
+      zMin,
+      zMax,
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    );
+
+      // keep modal open so they can see progress, or hide it if you prefer
+      // preModal.style.display = "none";
+  });
 
   if (preBtn && preModal) {
     // open modal
