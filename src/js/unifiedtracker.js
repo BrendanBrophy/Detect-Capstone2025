@@ -72,6 +72,8 @@ function initMap() {
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
 
+  setupPreDownloadMessaging();
+
     // --- Pre-download popup wiring ---
   const preBtn       = document.getElementById("preDownloadBtn");
   const preModal     = document.getElementById("preDownloadModal");
