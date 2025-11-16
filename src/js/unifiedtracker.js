@@ -51,6 +51,36 @@ function initMap() {
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
 
+    // --- Pre-download popup wiring ---
+  const preBtn       = document.getElementById("preDownloadBtn");
+  const preModal     = document.getElementById("preDownloadModal");
+  const preCancelBtn = document.getElementById("preCancelBtn");
+  const preStartBtn  = document.getElementById("preStartBtn");
+  const preRadius    = document.getElementById("preRadius");
+  const preZoomMin   = document.getElementById("preZoomMin");
+  const preZoomMax   = document.getElementById("preZoomMax");
+
+  if (preBtn && preModal) {
+    // open modal
+    preBtn.addEventListener("click", () => {
+      preModal.style.display = "flex";
+    });
+
+    // close modal
+    preCancelBtn?.addEventListener("click", () => {
+      preModal.style.display = "none";
+    });
+
+    // for now: just prove it works
+    preStartBtn?.addEventListener("click", () => {
+      const r   = Number(preRadius.value)  || 2;
+      const zmi = Number(preZoomMin.value) || 13;
+      const zma = Number(preZoomMax.value) || 17;
+      alert(`Start download: radius ${r} km, zoom ${zmi}-${zma}`);
+      // later: call startPreDownloadFromMap(r, zmi, zma, "https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+    });
+  }
+
   // Transport Mode
   const transportModeEl = document.getElementById('transportMode');
   if (transportModeEl) {
