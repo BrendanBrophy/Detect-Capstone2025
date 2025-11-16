@@ -143,8 +143,11 @@
           </select>
 
           <button id="recenterMap">Recenter Map</button>
-        </div>
 
+          <button id="preDownloadBtn" class="btn btn-secondary">
+            Pre-Download Area
+          </button>
+        </div>
         <div class="follow-toggle">
           <label>
             <input type="checkbox" id="followMap" checked>
@@ -179,6 +182,50 @@
         </div>
       </section>
     </div>
+
+    <!--Download Map -->
+    <div id="preDownloadModal" class="pd-modal" style="display:none;">
+      <div class="pd-modal-inner">
+        <h3>Pre-Download Map Area</h3>
+        <p>Center is current map view.</p>
+
+        <label>
+          Radius (km):
+          <input id="preRadius" type="number" min="0.5" step="0.5" value="2">
+        </label>
+
+        <label>
+          Zoom min:
+          <input id="preZoomMin" type="number" value="13">
+        </label>
+
+        <label>
+          Zoom max:
+          <input id="preZoomMax" type="number" value="17">
+        </label>
+
+        <div id="preSizeText" style="margin-top:6px;font-size:0.9rem;">
+          Estimated size: --
+        </div>
+
+        <div style="margin-top:8px;">
+          <div id="preProgressBar"
+              style="height:8px;background:#eee;border-radius:4px;overflow:hidden;">
+            <div id="preProgressFill"
+               style="width:0%;height:100%;background:#08a18b;"></div>
+        </div>
+        <div id="preProgressText"
+           style="margin-top:4px;font-size:0.85rem;">Not started</div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
+          <button id="preCancelBtn">Close</button>
+          <button id="preStartBtn">Start Download</button>
+        </div>
+      </div>
+    </div>
+
+    
   </main>
 
   <script src="../src/js/unifiedTracker.js"></script>
