@@ -50,7 +50,8 @@ function initMap() {
   }).addTo(map);
 }
 
-//Function to draw a circle radius function drawOfflineRadius(centerLatLng, radiusMeters) {
+// Function to draw a circle radius
+function drawOfflineRadius(centerLatLng, radiusMeters) {
   if (!map) return;
 
   if (offlineAreaCircle) {
@@ -73,38 +74,17 @@ window.addEventListener("DOMContentLoaded", () => {
   initMap();
 
   setupPreDownloadMessaging();
-
+  
     // --- Pre-download popup wiring ---
   const preBtn       = document.getElementById("preDownloadBtn");
   const preModal     = document.getElementById("preDownloadModal");
   const preCancelBtn = document.getElementById("preCancelBtn");
+  const preStartBtn  = document.getElementById("preStartBtn");
   const preRadius    = document.getElementById("preRadius");
   const preZoomMin   = document.getElementById("preZoomMin");
   const preZoomMax   = document.getElementById("preZoomMax");
 
-  preStartBtn?.addEventListener("click", () => {
-    const radiusKm = Number(preRadius.value)  || 2;
-    const zMin     = Number(preZoomMin.value) || 13;
-    const zMax     = Number(preZoomMax.value) || 17;
-
-    const center = map.getCenter();
-
-    // 1) draw circle on the map
-    drawOfflineRadius([center.lat, center.lng], radiusKm * 1000);
-
-    // 2) start downloading tiles for that area
-    startPreDownloadFromMap(
-      radiusKm,
-      zMin,
-      zMax,
-      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-    );
-
-      // keep modal open so they can see progress, or hide it if you prefer
-      // preModal.style.display = "none";
-  });
-
-  if (preBtn && preModal) {
+  if (preBtn && preModal && preStartBtn) {
     // open modal
     preBtn.addEventListener("click", () => {
       preModal.style.display = "flex";
@@ -115,13 +95,24 @@ window.addEventListener("DOMContentLoaded", () => {
       preModal.style.display = "none";
     });
 
-    // for now: just prove it works
-    preStartBtn?.addEventListener("click", () => {
-      const r   = Number(preRadius.value)  || 2;
-      const zmi = Number(preZoomMin.value) || 13;
-      const zma = Number(preZoomMax.value) || 17;
-      alert(`Start download: radius ${r} km, zoom ${zmi}-${zma}`);
-      // later: call startPreDownloadFromMap(r, zmi, zma, "https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+    // start download
+    preStartBtn.addEventListener("click", () => {
+      const radiusKm = Number(preRadius.value)  || 2;
+      const zMin     = Number(preZoomMin.value) || 13;
+      const zMax     = Number(preZoomMax.value) || 17;
+
+      const center = map.getCenter();
+
+      // draw radius on map
+      drawOfflineRadius([center.lat, center.lng], radiusKm * 1000);
+
+      // kick off tile download
+      startPreDownloadFromMap(
+        radiusKm,
+        zMin,
+        zMax,
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      );
     });
   }
 
