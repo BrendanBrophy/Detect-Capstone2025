@@ -71,3 +71,28 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+
+function showProgress(pct) {
+  updateProgress(pct);
+}
+
+function updateProgress(pct) {
+  const fill = document.getElementById("preProgressFill");
+  const txt  = document.getElementById("preProgressText");
+  if (fill) fill.style.width = `${pct.toFixed(0)}%`;
+  if (txt)  txt.textContent  = `Downloaded ${pct.toFixed(0)}%`;
+}
+
+function updateEstimate(bytes) {
+  const el = document.getElementById("preSizeText");
+  if (!el) return;
+  const mb = bytes / 1_000_000;
+  el.textContent = `Estimated size: ${mb.toFixed(1)} MB`;
+}
+
+function markAreaReady() {
+  const txt = document.getElementById("preProgressText");
+  if (txt) txt.textContent = "Download complete (available offline).";
+}
+
