@@ -20,10 +20,12 @@ let gpsBuffer = []; // Keep last 3 GPS points for speed calculation
 let usingDeviceGPS = false;
 let geoWatchId = null;
 
+let offlineAreaCircle = null;
+
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
@@ -43,8 +45,74 @@ function initMap() {
   }).addTo(map);
 }
 
+// Function to draw a circle radius
+function drawOfflineRadius(centerLatLng, radiusMeters) {
+  if (!map) return;
+
+  if (offlineAreaCircle) {
+    map.removeLayer(offlineAreaCircle);
+  }
+
+  offlineAreaCircle = L.circle(centerLatLng, {
+    radius: radiusMeters,
+    color: "#08a18b",
+    weight: 2,
+    fillColor: "#08a18b",
+    fillOpacity: 0.08
+  }).addTo(map);
+
+  // Optional: zoom map so the whole circle is visible
+  map.fitBounds(offlineAreaCircle.getBounds(), { padding: [20, 20] });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
+  
+    // --- Pre-download popup wiring (no service worker) ---
+  const preBtn       = document.getElementById("preDownloadBtn");
+  const preModal     = document.getElementById("preDownloadModal");
+  const preCancelBtn = document.getElementById("preCancelBtn");
+  const preStartBtn  = document.getElementById("preStartBtn");
+  const preRadius    = document.getElementById("preRadius");
+  const preZoomMin   = document.getElementById("preZoomMin");
+  const preZoomMax   = document.getElementById("preZoomMax");
+
+  if (preBtn && preModal && preStartBtn) {
+    preBtn.addEventListener("click", () => {
+      preModal.style.display = "flex";
+
+      // reset progress & estimate text
+      updateProgress(0);
+      const txt = document.getElementById("preProgressText");
+      if (txt) txt.textContent = "Not started";
+      const size = document.getElementById("preSizeText");
+      if (size) size.textContent = "Estimated size: --";
+    });
+
+    preCancelBtn?.addEventListener("click", () => {
+      preModal.style.display = "none";
+    });
+
+    preStartBtn.addEventListener("click", () => {
+      const radiusKm = Number(preRadius.value)  || 2;
+      const zMin     = Number(preZoomMin.value) || 13;
+      const zMax     = Number(preZoomMax.value) || 17;
+
+      const center = map.getCenter();
+
+      // 1) draw radius on map
+      drawOfflineRadius([center.lat, center.lng], radiusKm * 1000);
+
+      // 2) prefetch tiles with normal fetch()
+      preloadTilesAroundCenter(
+        radiusKm,
+        zMin,
+        zMax,
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      );
+    });
+  }
+
 
   // Transport Mode
   const transportModeEl = document.getElementById('transportMode');
@@ -156,18 +224,22 @@ window.addEventListener("DOMContentLoaded", () => {
           gpsButton.textContent = "Using Device GPS...";
           gpsButton.style.backgroundColor = "#4CAF50";
           usingDeviceGPS = true;
-
           geoWatchId = navigator.geolocation.watchPosition(
             (pos) => {
-              // Only update latest coordinates, do NOT log immediately
               latestLat = pos.coords.latitude;
               latestLng = pos.coords.longitude;
               currentHeading = pos.coords.heading ?? 0;
+
               if (headingEl) headingEl.textContent = currentHeading + "°";
+
+              // update marker + map even if not tracking
+              if (liveMarker) liveMarker.setLatLng([latestLat, latestLng]);
+              if (autoFollow && map) map.setView([latestLat, latestLng]);
             },
             (err) => alert("Error accessing device GPS: " + err.message),
             { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
           );
+          
         } else alert("Your browser does not support Geolocation.");
       } else {
         if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
@@ -348,4 +420,144 @@ if (SpeechRecognition && micBtn && noteInput) {
     }
   });
 }
+//Download Map Update
+// ---- Offline pre-download helpers (no service worker) ----
 
+const TILE_SIZE = 256; // not strictly needed, but kept for clarity
+
+// lon/lat → XYZ tile index (Web Mercator)
+function lonLatToTileXY(lon, lat, z) {
+  const n = 2 ** z;
+  const x = Math.floor(((lon + 180) / 360) * n);
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(
+    (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n
+  );
+  return { x, y };
+}
+
+// radius in meters → approx deg lat/lng at given latitude
+function metersToLngLatDelta(radius_m, lat) {
+  const dLat = radius_m / 111320; // ~meters per degree latitude
+  const dLng = radius_m / (111320 * Math.cos((lat * Math.PI) / 180));
+  return { dLat, dLng };
+}
+
+// haversine in meters (separate from haversineDistance used for speed)
+function offlineHaversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// all tiles whose centers fall inside a circle
+function tilesInCircle(center, radius_m, z) {
+  const { lng, lat } = center;
+  const { dLat, dLng } = metersToLngLatDelta(radius_m, lat);
+  const min = { lng: lng - dLng, lat: lat - dLat };
+  const max = { lng: lng + dLng, lat: lat + dLat };
+
+  const tMin = lonLatToTileXY(min.lng, max.lat, z);
+  const tMax = lonLatToTileXY(max.lng, min.lat, z);
+
+  const tiles = [];
+  for (let x = tMin.x; x <= tMax.x; x++) {
+    for (let y = tMin.y; y <= tMax.y; y++) {
+      const n = 2 ** z;
+      const lonT = (x / n) * 360 - 180 + 180 / n;
+      const latRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 0.5)) / n)));
+      const latT = (latRad * 180) / Math.PI;
+      const d = offlineHaversine(lat, lng, latT, lonT);
+      if (d <= radius_m) tiles.push({ z, x, y });
+    }
+  }
+  return tiles;
+}
+
+const AVG_TILE_BYTES_DEFAULT = 120_000; // rough guess
+
+// build list of tile URLs to prefetch
+async function buildTileList(center, radius_m, zMin, zMax, urlTemplate) {
+  const urls = [];
+  for (let z = zMin; z <= zMax; z++) {
+    for (const { x, y } of tilesInCircle(center, radius_m, z)) {
+      const url = urlTemplate
+        .replace("{z}", z)
+        .replace("{x}", x)
+        .replace("{y}", y);
+      urls.push(url);
+    }
+  }
+  return urls;
+}
+
+function estimateBytes(tileCount, avg = AVG_TILE_BYTES_DEFAULT) {
+  return tileCount * avg;
+}
+
+// NEW: plain JS prefetch, no service worker
+async function preloadTilesAroundCenter(radiusKm, zMin, zMax, urlTemplate) {
+  if (!map) return;
+
+  const center = map.getCenter();
+  const radius_m = radiusKm * 1000;
+
+  const urls = await buildTileList(
+    { lat: center.lat, lng: center.lng },
+    radius_m,
+    zMin,
+    zMax,
+    urlTemplate
+  );
+
+  const estBytes = estimateBytes(urls.length);
+  updateEstimate(estBytes);
+
+  let done = 0;
+  showProgress(0);
+
+  for (const url of urls) {
+    try {
+      await fetch(url, { mode: "cors" });
+      // browser should keep these in its normal HTTP cache
+    } catch (e) {
+      // ignore individual failures
+    }
+    done++;
+    const pct = (done / urls.length) * 100;
+    updateProgress(pct);
+  }
+
+  markAreaReady();
+}
+
+// Progress UI helpers
+function showProgress(pct) {
+  updateProgress(pct);
+}
+
+function updateProgress(pct) {
+  const fill = document.getElementById("preProgressFill");
+  const txt  = document.getElementById("preProgressText");
+  if (fill) fill.style.width = `${pct.toFixed(0)}%`;
+  if (txt)  txt.textContent  = `Downloaded ${pct.toFixed(0)}%`;
+}
+
+function updateEstimate(bytes) {
+  const el = document.getElementById("preSizeText");
+  if (!el) return;
+  const mb = bytes / 1_000_000;
+  el.textContent = `Estimated size: ${mb.toFixed(1)} MB`;
+}
+
+function markAreaReady() {
+  const txt = document.getElementById("preProgressText");
+  if (txt) txt.textContent = "Download complete (browser cache).";
+}

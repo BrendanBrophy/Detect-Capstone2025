@@ -296,3 +296,26 @@
   .note-lang{ width:100%; }
 }
 
+/*Download Map*/
+.pd-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: none; /* hidden by default */
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.pd-modal-inner {
+  background: #fff;
+  padding: 16px 20px;
+  border-radius: 8px;
+  max-width: 320px;
+  width: 90%;
+  font-size: 14px;
+}
+.pd-modal-inner label {
+  display:block;
+  margin-top:6px;
+}
+
