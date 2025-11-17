@@ -22,11 +22,6 @@ let geoWatchId = null;
 
 let offlineAreaCircle = null;
 
-//ServiceWorker file call for map update
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(console.error);
-}
-
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
 
@@ -72,10 +67,8 @@ function drawOfflineRadius(centerLatLng, radiusMeters) {
 
 window.addEventListener("DOMContentLoaded", () => {
   initMap();
-
-  setupPreDownloadMessaging();
   
-    // --- Pre-download popup wiring ---
+    // --- Pre-download popup wiring (no service worker) ---
   const preBtn       = document.getElementById("preDownloadBtn");
   const preModal     = document.getElementById("preDownloadModal");
   const preCancelBtn = document.getElementById("preCancelBtn");
@@ -85,17 +78,21 @@ window.addEventListener("DOMContentLoaded", () => {
   const preZoomMax   = document.getElementById("preZoomMax");
 
   if (preBtn && preModal && preStartBtn) {
-    // open modal
     preBtn.addEventListener("click", () => {
       preModal.style.display = "flex";
+
+      // reset progress & estimate text
+      updateProgress(0);
+      const txt = document.getElementById("preProgressText");
+      if (txt) txt.textContent = "Not started";
+      const size = document.getElementById("preSizeText");
+      if (size) size.textContent = "Estimated size: --";
     });
 
-    // close modal
     preCancelBtn?.addEventListener("click", () => {
       preModal.style.display = "none";
     });
 
-    // start download
     preStartBtn.addEventListener("click", () => {
       const radiusKm = Number(preRadius.value)  || 2;
       const zMin     = Number(preZoomMin.value) || 13;
@@ -103,11 +100,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
       const center = map.getCenter();
 
-      // draw radius on map
+      // 1) draw radius on map
       drawOfflineRadius([center.lat, center.lng], radiusKm * 1000);
 
-      // kick off tile download
-      startPreDownloadFromMap(
+      // 2) prefetch tiles with normal fetch()
+      preloadTilesAroundCenter(
         radiusKm,
         zMin,
         zMax,
@@ -115,6 +112,7 @@ window.addEventListener("DOMContentLoaded", () => {
       );
     });
   }
+
 
   // Transport Mode
   const transportModeEl = document.getElementById('transportMode');
@@ -422,13 +420,10 @@ if (SpeechRecognition && micBtn && noteInput) {
     }
   });
 }
-
 //Download Map Update
-// ---- Offline pre-download helpers (main JS) ----
+// ---- Offline pre-download helpers (no service worker) ----
 
-let currentAreaId = null;
-
-const TILE_SIZE = 256;
+const TILE_SIZE = 256; // not strictly needed, but kept for clarity
 
 // lon/lat → XYZ tile index (Web Mercator)
 function lonLatToTileXY(lon, lat, z) {
@@ -448,7 +443,7 @@ function metersToLngLatDelta(radius_m, lat) {
   return { dLat, dLng };
 }
 
-// haversine in meters (separate from your existing haversineDistance)
+// haversine in meters (separate from haversineDistance used for speed)
 function offlineHaversine(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -486,9 +481,9 @@ function tilesInCircle(center, radius_m, z) {
   return tiles;
 }
 
-const AVG_TILE_BYTES_DEFAULT = 120_000; // tweak for your provider
+const AVG_TILE_BYTES_DEFAULT = 120_000; // rough guess
 
-// build list of tile URLs to cache
+// build list of tile URLs to prefetch
 async function buildTileList(center, radius_m, zMin, zMax, urlTemplate) {
   const urls = [];
   for (let z = zMin; z <= zMax; z++) {
@@ -507,76 +502,43 @@ function estimateBytes(tileCount, avg = AVG_TILE_BYTES_DEFAULT) {
   return tileCount * avg;
 }
 
-// main entry: called from your UI when user confirms download
-async function predownloadArea(options) {
-  const { areaId, center, radius_m, zMin, zMax, urlTemplate } = options;
+// NEW: plain JS prefetch, no service worker
+async function preloadTilesAroundCenter(radiusKm, zMin, zMax, urlTemplate) {
+  if (!map) return;
 
-  if (!("serviceWorker" in navigator)) {
-    alert("Service worker not supported in this browser.");
-    return;
-  }
-
-  const urls = await buildTileList(center, radius_m, zMin, zMax, urlTemplate);
-  const estBytes = estimateBytes(urls.length);
-  updateEstimate(estBytes); // you can implement this to update the UI
-
-  const reg = await navigator.serviceWorker.ready;
-  if (!reg.active) {
-    alert("Service worker not active yet. Try again in a moment.");
-    return;
-  }
-
-  reg.active.postMessage({
-    type: "CACHE_TILES",
-    areaId,
-    urls
-  });
-}
-
-// helper to start from current map view (you can call this from your modal)
-function startPreDownloadFromMap(radiusKm, zMin, zMax, urlTemplate) {
-  if (!map) {
-    console.error("Map not initialized");
-    return;
-  }
   const center = map.getCenter();
-  currentAreaId = crypto.randomUUID();
+  const radius_m = radiusKm * 1000;
 
-  showProgress(0); // simple UI hook – implement as you like
-
-  predownloadArea({
-    areaId: currentAreaId,
-    center: { lng: center.lng, lat: center.lat },
-    radius_m: radiusKm * 1000,
+  const urls = await buildTileList(
+    { lat: center.lat, lng: center.lng },
+    radius_m,
     zMin,
     zMax,
     urlTemplate
-  });
-}
+  );
 
-// listen for SW progress messages (call once on startup)
-function setupPreDownloadMessaging() {
-  if (!("serviceWorker" in navigator)) return;
+  const estBytes = estimateBytes(urls.length);
+  updateEstimate(estBytes);
 
-  navigator.serviceWorker.addEventListener("message", (evt) => {
-    const { type, areaId, done, total } = evt.data || {};
-    if (!currentAreaId || areaId !== currentAreaId) return;
+  let done = 0;
+  showProgress(0);
 
-    if (type === "CACHE_PROGRESS") {
-      const pct = total ? (done / total) * 100 : 0;
-      updateProgress(pct); // your UI hook
-    } else if (type === "CACHE_DONE") {
-      markAreaReady(); // your UI hook
+  for (const url of urls) {
+    try {
+      await fetch(url, { mode: "cors" });
+      // browser should keep these in its normal HTTP cache
+    } catch (e) {
+      // ignore individual failures
     }
-  });
+    done++;
+    const pct = (done / urls.length) * 100;
+    updateProgress(pct);
+  }
+
+  markAreaReady();
 }
 
-// expose helpers if you want to call from HTML
-window.startPreDownloadFromMap = startPreDownloadFromMap;
-window.setupPreDownloadMessaging = setupPreDownloadMessaging;
-
-
-
+// Progress UI helpers
 function showProgress(pct) {
   updateProgress(pct);
 }
@@ -597,5 +559,5 @@ function updateEstimate(bytes) {
 
 function markAreaReady() {
   const txt = document.getElementById("preProgressText");
-  if (txt) txt.textContent = "Download complete (available offline).";
+  if (txt) txt.textContent = "Download complete (browser cache).";
 }
