@@ -149,7 +149,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Mark Take-Off
   document.getElementById("markTakeOff").addEventListener("click", () => {
-    if (!isTracking || trackingLog.length === 0 || hasMarkedTakeOff) return;
+    if (!isTracking || trackingLog.length === 0) return;
     const last = trackingLog[trackingLog.length - 1];
 
     takeOffMarker = L.marker([last.lat, last.lng], {
@@ -166,7 +166,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (lastRow) lastRow.children[5].textContent = "\u2714"; // checkmark
 
     last.takeOff = "\u2714"; 
-    hasMarkedTakeOff = true;
   });
 
   // Drop Note
