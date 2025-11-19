@@ -22,6 +22,16 @@ let geoWatchId = null;
 
 let offlineAreaCircle = null;
 
+// For inferred takeoff detection (idle for 5 minutes)
+let lastMoveLat = null;
+let lastMoveLng = null;
+let lastMoveTime = null;
+let inferredTakeoffLoggedForCurrentStop = false;
+
+const STOP_DISTANCE_THRESHOLD_M = 3;              // meters - "not moving"
+const STOP_TIME_THRESHOLD_MS = 5 * 60 * 1000;     // 5 minutes
+
+
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
 
@@ -268,6 +278,7 @@ window.updateHeading = function(degrees) {
 };
 
 // Update GPS & log
+// Update GPS & log
 window.updateGPS = function(lat, lng, timestamp) {
   const timeStr = new Date(parseInt(timestamp)).toLocaleTimeString();
   if (latEl) latEl.textContent = lat.toFixed(5);
@@ -276,11 +287,13 @@ window.updateGPS = function(lat, lng, timestamp) {
 
   if (!isTracking) return;
 
-  // GPS buffer
+  // -----------------------------
+  // GPS buffer for inferred transport
+  // -----------------------------
   gpsBuffer.push({ lat, lng, time: timestamp / 1000 });
   if (gpsBuffer.length > 3) gpsBuffer.shift();
 
-  // Inferred transport
+  // Inferred transport based on avg speed
   let inferredTransport = "--";
   if (gpsBuffer.length >= 2) {
     let totalDistance = 0, totalTime = 0;
@@ -291,11 +304,15 @@ window.updateGPS = function(lat, lng, timestamp) {
       totalDistance += distance;
       totalTime += deltaTime;
     }
-    const avgSpeedKmh = (totalDistance / totalTime) * 3.6;
-    inferredTransport = avgSpeedKmh < 6 ? "Walking" : "Driving";
+    if (totalTime > 0) {
+      const avgSpeedKmh = (totalDistance / totalTime) * 3.6;
+      inferredTransport = avgSpeedKmh < 6 ? "Walking" : "Driving";
+    }
   }
 
-  // Add table row
+  // -----------------------------
+  // Add table row for this sample
+  // -----------------------------
   const row = document.createElement("tr");
   row.innerHTML = `
     <td>${timeStr}</td>
@@ -321,7 +338,55 @@ window.updateGPS = function(lat, lng, timestamp) {
     inferredTransport
   });
 
-  // Update map
+  // -----------------------------
+  // Movement tracking for inferred takeoff
+  // -----------------------------
+  const nowMs = Date.now();
+
+  // First GPS point
+  if (lastMoveLat === null || lastMoveLng === null) {
+    lastMoveLat = lat;
+    lastMoveLng = lng;
+    lastMoveTime = nowMs;
+    inferredTakeoffLoggedForCurrentStop = false;
+  } else {
+    const dist = haversineDistance(lastMoveLat, lastMoveLng, lat, lng);
+
+    if (dist > STOP_DISTANCE_THRESHOLD_M) {
+      // We moved → reset idle timer
+      lastMoveLat = lat;
+      lastMoveLng = lng;
+      lastMoveTime = nowMs;
+      inferredTakeoffLoggedForCurrentStop = false;
+    } else {
+      // Not moving
+      const idleTime = nowMs - lastMoveTime;
+
+      if (!inferredTakeoffLoggedForCurrentStop &&
+          idleTime >= STOP_TIME_THRESHOLD_MS) {
+
+        // Mark inferred takeoff on the LAST row recorded
+        const lastRow = logBody.lastElementChild;
+        if (lastRow && lastRow.children && lastRow.children[4]) {
+          lastRow.children[4].textContent = "Inferred takeoff (idle 5 min)";
+        }
+
+        // Also add flag for exporter
+        if (trackingLog.length > 0) {
+          const lastEntry = trackingLog[trackingLog.length - 1];
+          lastEntry.note = "Inferred takeoff (idle 5 min)";
+          lastEntry.isInferredTakeoff = true;
+        }
+
+        inferredTakeoffLoggedForCurrentStop = true;
+      }
+    }
+  }
+
+
+  // -----------------------------
+  // Map update
+  // -----------------------------
   liveMarker.setLatLng([lat, lng]);
   if (autoFollow) map.setView([lat, lng]);
   pathCoordinates.push([lat, lng]);
@@ -335,6 +400,7 @@ window.updateGPS = function(lat, lng, timestamp) {
     weight: 2
   }).addTo(map);
 };
+
 
 // Periodic logging every 5 seconds
 setInterval(() => {
