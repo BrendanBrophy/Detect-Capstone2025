@@ -19,7 +19,7 @@ document.getElementById("exportData").addEventListener("click", () => {
       noteText.toLowerCase().startsWith("inferred takeoff");
 
     return {
-      time: cells[0],
+      time: cells[0],                 // full time string (with seconds)
       lat: parseFloat(cells[1]),
       lng: parseFloat(cells[2]),
       heading: cells[3],
@@ -44,7 +44,7 @@ document.getElementById("exportData").addEventListener("click", () => {
     `_${pad(now.getHours())}-${pad(now.getMinutes())}`;
 
   // ====================================================
-  // CSV EXPORT
+  // CSV EXPORT (keep full time with seconds)
   // ====================================================
   const csvRows = [];
 
@@ -80,7 +80,7 @@ document.getElementById("exportData").addEventListener("click", () => {
 
   logEntries.forEach(e => {
     csvRows.push([
-      e.time,
+      e.time,                          // full time (with seconds)
       e.lat.toFixed(5),
       e.lng.toFixed(5),
       e.heading,
@@ -105,13 +105,52 @@ document.getElementById("exportData").addEventListener("click", () => {
   // KML EXPORT
   // ====================================================
 
+  // Helper: format time for KML pin NAME (24h, no seconds)
+  function formatTimeForKml(timeStr) {
+    if (!timeStr) return "";
+
+    // Match "h:mm[:ss] AM/PM"
+    const ampmMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AP]M)/i);
+    if (ampmMatch) {
+      let hour = parseInt(ampmMatch[1], 10);
+      const minute = ampmMatch[2];
+      const ampm = ampmMatch[4].toUpperCase();
+
+      if (ampm === "PM" && hour !== 12) hour += 12;
+      if (ampm === "AM" && hour === 12) hour = 0;
+
+      return `${pad(hour)}:${minute}`;
+    }
+
+    // Match "HH:MM:SS"
+    const hmsMatch = timeStr.match(/^\s*(\d{1,2}):(\d{2}):(\d{2})/);
+    if (hmsMatch) {
+      const hour = pad(parseInt(hmsMatch[1], 10));
+      const minute = hmsMatch[2];
+      return `${hour}:${minute}`;
+    }
+
+    // Match "HH:MM"
+    const hmMatch = timeStr.match(/^\s*(\d{1,2}):(\d{2})\s*$/);
+    if (hmMatch) {
+      const hour = pad(parseInt(hmMatch[1], 10));
+      const minute = hmMatch[2];
+      return `${hour}:${minute}`;
+    }
+
+    // Fallback: return original string
+    return timeStr;
+  }
+
   // ---------- Point Placemarks (pins) ----------
-  const regularPlacemarks = [];
-  const inferredPlacemarks = []; // these will be appended last so they render on top
+  const regularPlacemarks = [];   // non-takeoff, non-inferred
+  const takeoffPlacemarks = [];   // manual takeoff
+  const inferredPlacemarks = [];  // inferred takeoff (idle 5 min)
 
   logEntries.forEach(e => {
     const mode = (e.transport || "").toLowerCase();
     const isTakeoff = e.takeOff === "✔";
+    const kmlTime = formatTimeForKml(e.time);   // 24h, no seconds for pin name
 
     let styleId;
     if (e.isInferredTakeoff) {
@@ -128,7 +167,7 @@ document.getElementById("exportData").addEventListener("click", () => {
 
     const placemark = `
     <Placemark>
-      <name>${e.time}</name>
+      <name>${kmlTime}</name>
       <styleUrl>#${styleId}</styleUrl>
       <description><![CDATA[
         Time: ${e.time}<br/>
@@ -145,13 +184,31 @@ document.getElementById("exportData").addEventListener("click", () => {
 
     if (e.isInferredTakeoff) {
       inferredPlacemarks.push(placemark);
+    } else if (isTakeoff) {
+      takeoffPlacemarks.push(placemark);
     } else {
       regularPlacemarks.push(placemark);
     }
   });
 
-  const placemarksXml =
-    regularPlacemarks.join("\n") + "\n" + inferredPlacemarks.join("\n");
+  // Three separate folders so we can control draw order:
+  const regularPointsFolder = `
+    <Folder>
+      <name>Points - Regular</name>
+      ${regularPlacemarks.join("\n")}
+    </Folder>`;
+
+  const takeoffPointsFolder = `
+    <Folder>
+      <name>Points - Takeoff</name>
+      ${takeoffPlacemarks.join("\n")}
+    </Folder>`;
+
+  const inferredPointsFolder = `
+    <Folder>
+      <name>Points - Inferred Takeoff</name>
+      ${inferredPlacemarks.join("\n")}
+    </Folder>`;
 
   // ---------- LineString segments, colored by transport ----------
   let transportSegments = "";
@@ -183,7 +240,18 @@ document.getElementById("exportData").addEventListener("click", () => {
     </Placemark>`;
   }
 
+  const pathsFolder = `
+    <Folder>
+      <name>Paths</name>
+      ${transportSegments}
+    </Folder>`;
+
   // ---------- Full KML document ----------
+  // Order in Document:
+  // 1) Paths          (bottom)
+  // 2) Regular points
+  // 3) Takeoff points
+  // 4) Inferred takeoff points (topmost)
   const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -200,7 +268,7 @@ document.getElementById("exportData").addEventListener("click", () => {
       </IconStyle>
     </Style>
 
-    <!-- Inferred Takeoff: BIG white pin, drawn last -->
+    <!-- Inferred Takeoff: BIG white pin (1.5x) -->
     <Style id="inferredTakeoffStyle">
       <IconStyle>
         <scale>1.5</scale>
@@ -265,11 +333,11 @@ document.getElementById("exportData").addEventListener("click", () => {
       </LineStyle>
     </Style>
 
-    <!-- Segmented path colored by transport -->
-    ${transportSegments}
-
-    <!-- Point markers (regular first, inferred last so they sit on top) -->
-    ${placemarksXml}
+    <!-- Draw order: paths first, then regular pins, then takeoff, then inferred -->
+    ${pathsFolder}
+    ${regularPointsFolder}
+    ${takeoffPointsFolder}
+    ${inferredPointsFolder}
 
   </Document>
 </kml>`;
