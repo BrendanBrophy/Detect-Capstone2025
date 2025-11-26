@@ -335,3 +335,17 @@
   margin-top:6px;
 }
 
+#zoomLabel {
+  position: fixed;
+  bottom: 12px;
+  left: 12px; /* opposite corner from compassLabel */
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  font-weight: bold;
+  font-size: 1rem;
+  border-radius: 6px;
+  z-index: 999;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
