@@ -440,33 +440,55 @@ let recognition = null;
 let listening = false;
 let finalBuffer = "";
 
+// helper: quick warning when offline / network error
+function speechNeedsInternet() {
+  alert("Speech-to-text needs an internet connection in this browser. You can still type notes manually.");
+}
+
 if (SpeechRecognition && micBtn && noteInput) {
   recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = (noteLang && noteLang.value) || "en-CA";
 
+  // change STT language
   noteLang?.addEventListener("change", () => {
     recognition.lang = noteLang.value;
     if (listening) {
-      recognition.stop();
-      setTimeout(() => recognition.start(), 150);
+      listening = false;
+      micBtn.classList.remove("recording");
+      try { recognition.stop(); } catch {}
     }
   });
 
+  // mic button click
   micBtn.addEventListener("click", () => {
+    // no connection → don’t even try to start
+    if (!navigator.onLine) {
+      speechNeedsInternet();
+      return;
+    }
+
     if (!listening) {
       finalBuffer = "";
-      recognition.start();
-      micBtn.classList.add("recording");
-      listening = true;
+      try {
+        recognition.start();
+        micBtn.classList.add("recording");
+        listening = true;
+      } catch (e) {
+        // if start fails because of network / permissions
+        listening = false;
+        micBtn.classList.remove("recording");
+        speechNeedsInternet();
+      }
     } else {
-      recognition.stop();
+      try { recognition.stop(); } catch {}
       micBtn.classList.remove("recording");
       listening = false;
     }
   });
 
+  // results → fill noteInput
   recognition.addEventListener("result", (e) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -477,14 +499,30 @@ if (SpeechRecognition && micBtn && noteInput) {
     noteInput.value = (finalBuffer + interim).trim();
   });
 
-  recognition.addEventListener("end", () => {
-    if (listening) {
-      try { recognition.start(); } catch {}
-    } else {
+  // handle network errors cleanly
+  recognition.addEventListener("error", (e) => {
+    if (e.error === "network") {
+      listening = false;
       micBtn.classList.remove("recording");
+      speechNeedsInternet();
     }
   });
+
+  // if the engine stops by itself while we think we’re listening
+  recognition.addEventListener("end", () => {
+    if (listening && !navigator.onLine) {
+      listening = false;
+      micBtn.classList.remove("recording");
+      speechNeedsInternet();
+    }
+  });
+} else if (micBtn) {
+  // no STT support at all
+  micBtn.addEventListener("click", () => {
+    alert("Speech-to-text is not supported in this browser. You can still type notes manually.");
+  });
 }
+
 //Download Map Update
 // ---- Offline pre-download helpers (no service worker) ----
 
