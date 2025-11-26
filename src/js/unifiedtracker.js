@@ -22,17 +22,15 @@ let geoWatchId = null;
 
 let offlineAreaCircle = null;
 
-// For inferred takeoff detection (idle for 5 minutes)
+// For inferred takeoff detection (idle for 2 minutes, with ~1 m buffer)
 let lastMoveLat = null;
 let lastMoveLng = null;
 let lastMoveTime = null;
 let inferredTakeoffLoggedForCurrentStop = false;
+let idlePopupShownForCurrentStop = false;   // 🔹 make sure this line exists
 
-// 🆕 add this:
-let idlePopupShownForCurrentStop = false;
-
-const STOP_DISTANCE_THRESHOLD_M = 3;              // meters - "not moving"
-const STOP_TIME_THRESHOLD_MS = 5 * 60 * 1000;     // 5 minutes
+const STOP_DISTANCE_THRESHOLD_M = 3;        // meters – treat <=1 m as "no movement"
+const STOP_TIME_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes (for testing)
 
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
