@@ -39,6 +39,8 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
+  document.getElementById("zoomLabel").textContent = `Zoom: ${map.getZoom()}`;
+
   liveMarker = L.marker([0, 0]).addTo(map);
 
   headingLine = L.polyline([[0, 0], [0, 0]], {
@@ -54,6 +56,12 @@ function initMap() {
     opacity: 0.8
   }).addTo(map);
 }
+
+map.on("zoomend", () => {
+  const z = map.getZoom();
+  const el = document.getElementById("zoomLabel");
+  if (el) el.textContent = `Zoom: ${z}`;
+});
 
 // Function to draw a circle radius
 function drawOfflineRadius(centerLatLng, radiusMeters) {
