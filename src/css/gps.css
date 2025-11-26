@@ -139,13 +139,43 @@
     }
   }
 
-  #map {
-    height: 300px;
-    width: 100%;
-    margin-bottom: 1.5rem;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-  }
+#map {
+  position: relative;   /* important */
+  height: 300px;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* zoom bottom-left of the map */
+#zoomLabel {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  z-index: 999;
+}
+
+/* compass bottom-right of the map */
+#compassLabel {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  padding: 4px 8px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  z-index: 999;
+}
+
   
   .tracking-controls {
     display: flex;
@@ -333,19 +363,5 @@
 .pd-modal-inner label {
   display:block;
   margin-top:6px;
-}
-
-#zoomLabel {
-  position: fixed;
-  bottom: 12px;
-  left: 12px; /* opposite corner from compassLabel */
-  background: rgba(255,255,255,0.9);
-  border: 1px solid #ccc;
-  padding: 6px 10px;
-  font-weight: bold;
-  font-size: 1rem;
-  border-radius: 6px;
-  z-index: 999;
-  font-family: 'Space Grotesk', sans-serif;
 }
 
