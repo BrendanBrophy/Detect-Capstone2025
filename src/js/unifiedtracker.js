@@ -28,6 +28,9 @@ let lastMoveLng = null;
 let lastMoveTime = null;
 let inferredTakeoffLoggedForCurrentStop = false;
 
+// 🆕 add this:
+let idlePopupShownForCurrentStop = false;
+
 const STOP_DISTANCE_THRESHOLD_M = 3;              // meters - "not moving"
 const STOP_TIME_THRESHOLD_MS = 5 * 60 * 1000;     // 5 minutes
 
@@ -232,6 +235,13 @@ window.addEventListener("DOMContentLoaded", () => {
     pathCoordinates = [];
     hasMarkedTakeOff = false;
     gpsBuffer = [];
+
+    // 🆕 reset idle tracking state
+    lastMoveLat = null;
+    lastMoveLng = null;
+    lastMoveTime = null;
+    inferredTakeoffLoggedForCurrentStop = false;
+    idlePopupShownForCurrentStop = false;
   });
 
   // Device GPS button
@@ -348,50 +358,69 @@ window.updateGPS = function(lat, lng, timestamp) {
   });
 
   // -----------------------------
-  // Movement tracking for inferred takeoff
+  // Movement tracking for inferred takeoff + idle popup
   // -----------------------------
   const nowMs = Date.now();
 
-  // First GPS point
+  // First GPS point for movement tracking
   if (lastMoveLat === null || lastMoveLng === null) {
     lastMoveLat = lat;
     lastMoveLng = lng;
     lastMoveTime = nowMs;
     inferredTakeoffLoggedForCurrentStop = false;
+    idlePopupShownForCurrentStop = false;
   } else {
     const dist = haversineDistance(lastMoveLat, lastMoveLng, lat, lng);
 
     if (dist > STOP_DISTANCE_THRESHOLD_M) {
-      // We moved → reset idle timer
+      // We moved → reset idle timer / flags
       lastMoveLat = lat;
       lastMoveLng = lng;
       lastMoveTime = nowMs;
       inferredTakeoffLoggedForCurrentStop = false;
+      idlePopupShownForCurrentStop = false;
     } else {
       // Not moving
       const idleTime = nowMs - lastMoveTime;
 
-      if (!inferredTakeoffLoggedForCurrentStop &&
-          idleTime >= STOP_TIME_THRESHOLD_MS) {
+      if (idleTime >= STOP_TIME_THRESHOLD_MS) {
+        // 1) Existing inferred takeoff marker (once)
+        if (!inferredTakeoffLoggedForCurrentStop) {
+          const lastRow = logBody.lastElementChild;
+          if (lastRow && lastRow.children && lastRow.children[4]) {
+            lastRow.children[4].textContent = "Inferred takeoff (idle 5 min)";
+          }
 
-        // Mark inferred takeoff on the LAST row recorded
-        const lastRow = logBody.lastElementChild;
-        if (lastRow && lastRow.children && lastRow.children[4]) {
-          lastRow.children[4].textContent = "Inferred takeoff (idle 5 min)";
+          if (trackingLog.length > 0) {
+            const lastEntry = trackingLog[trackingLog.length - 1];
+            lastEntry.note = "Inferred takeoff (idle 5 min)";
+            lastEntry.isInferredTakeoff = true;
+          }
+
+          inferredTakeoffLoggedForCurrentStop = true;
         }
 
-        // Also add flag for exporter
-        if (trackingLog.length > 0) {
-          const lastEntry = trackingLog[trackingLog.length - 1];
-          lastEntry.note = "Inferred takeoff (idle 5 min)";
-          lastEntry.isInferredTakeoff = true;
-        }
+        // 2) NEW: idle popup asking to stop tracking (once per idle period)
+        if (!idlePopupShownForCurrentStop && isTracking) {
+          idlePopupShownForCurrentStop = true;
 
-        inferredTakeoffLoggedForCurrentStop = true;
+          const stopNow = window.confirm(
+            "You've been stationary for 5 minutes. Do you want to stop tracking?"
+          );
+
+          if (stopNow) {
+            isTracking = false;
+            const startBtn = document.getElementById("startTracking");
+            const stopBtn  = document.getElementById("stopTracking");
+            if (startBtn && stopBtn) {
+              startBtn.disabled = false;
+              stopBtn.disabled = true;
+            }
+          }
+        }
       }
     }
   }
-
 
   // -----------------------------
   // Map update
