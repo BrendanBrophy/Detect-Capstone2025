@@ -31,7 +31,6 @@ let inferredTakeoffLoggedForCurrentStop = false;
 const STOP_DISTANCE_THRESHOLD_M = 3;              // meters - "not moving"
 const STOP_TIME_THRESHOLD_MS = 5 * 60 * 1000;     // 5 minutes
 
-
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
 
@@ -39,7 +38,16 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  document.getElementById("zoomLabel").textContent = `Zoom: ${map.getZoom()}`;
+  // init zoom label once map exists
+  const zl = document.getElementById("zoomLabel");
+  if (zl) zl.textContent = `Zoom: ${map.getZoom()}`;
+
+  // update on zoom changes
+  map.on("zoomend", () => {
+    const z = map.getZoom();
+    const el = document.getElementById("zoomLabel");
+    if (el) el.textContent = `Zoom: ${z}`;
+  });
 
   liveMarker = L.marker([0, 0]).addTo(map);
 
@@ -56,12 +64,6 @@ function initMap() {
     opacity: 0.8
   }).addTo(map);
 }
-
-map.on("zoomend", () => {
-  const z = map.getZoom();
-  const el = document.getElementById("zoomLabel");
-  if (el) el.textContent = `Zoom: ${z}`;
-});
 
 // Function to draw a circle radius
 function drawOfflineRadius(centerLatLng, radiusMeters) {
