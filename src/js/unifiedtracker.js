@@ -22,15 +22,16 @@ let geoWatchId = null;
 
 let offlineAreaCircle = null;
 
-// For inferred takeoff detection (idle for 2 minutes, with ~1 m buffer)
+// For inferred takeoff detection (idle-based)
 let lastMoveLat = null;
 let lastMoveLng = null;
 let lastMoveTime = null;
 let inferredTakeoffLoggedForCurrentStop = false;
-let idlePopupShownForCurrentStop = false;   // 🔹 make sure this line exists
+let idlePopupShownForCurrentStop = false;   // tracks if popup already shown for this stop
 
-const STOP_DISTANCE_THRESHOLD_M = 3;        // meters – treat <=1 m as "no movement"
-const STOP_TIME_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes (for testing)
+const STOP_DISTANCE_THRESHOLD_M = 3;                // meters – treat <=3 m as "no movement"
+const INFERRED_TAKEOFF_IDLE_MS = 5 * 60 * 1000;     // 5 minutes of idle → inferred takeoff
+const STOP_TRACKING_PROMPT_IDLE_MS = 10 * 60 * 1000; // 10 minutes of idle → stop prompt
 
 function initMap() {
   map = L.map('map').setView([0, 0], 15);
@@ -376,49 +377,50 @@ window.updateGPS = function(lat, lng, timestamp) {
       lastMoveLng = lng;
       lastMoveTime = nowMs;
       inferredTakeoffLoggedForCurrentStop = false;
-      idlePopupShownForCurrentStop = false;
-    } else {
+          } else {
       // Not moving
       const idleTime = nowMs - lastMoveTime;
 
-      if (idleTime >= STOP_TIME_THRESHOLD_MS) {
-        // 1) Existing inferred takeoff marker (once)
-        if (!inferredTakeoffLoggedForCurrentStop) {
-          const lastRow = logBody.lastElementChild;
-          if (lastRow && lastRow.children && lastRow.children[4]) {
-            lastRow.children[4].textContent = "Inferred takeoff (idle 5 min)";
-          }
+      // 1) Inferred takeoff once after 5 minutes of idle
+      if (!inferredTakeoffLoggedForCurrentStop &&
+          idleTime >= INFERRED_TAKEOFF_IDLE_MS) {
 
-          if (trackingLog.length > 0) {
-            const lastEntry = trackingLog[trackingLog.length - 1];
-            lastEntry.note = "Inferred takeoff (idle 5 min)";
-            lastEntry.isInferredTakeoff = true;
-          }
-
-          inferredTakeoffLoggedForCurrentStop = true;
+        const lastRow = logBody.lastElementChild;
+        if (lastRow && lastRow.children && lastRow.children[4]) {
+          lastRow.children[4].textContent = "Inferred takeoff (idle 5 min)";
         }
 
-        // 2) NEW: idle popup asking to stop tracking (once per idle period)
-        if (!idlePopupShownForCurrentStop && isTracking) {
-          idlePopupShownForCurrentStop = true;
+        if (trackingLog.length > 0) {
+          const lastEntry = trackingLog[trackingLog.length - 1];
+          lastEntry.note = "Inferred takeoff (idle 5 min)";
+          lastEntry.isInferredTakeoff = true;
+        }
 
-          const stopNow = window.confirm(
-            "You've been stationary for 5 minutes. Do you want to stop tracking?"
-          );
+        inferredTakeoffLoggedForCurrentStop = true;
+      }
 
-          if (stopNow) {
-            isTracking = false;
-            const startBtn = document.getElementById("startTracking");
-            const stopBtn  = document.getElementById("stopTracking");
-            if (startBtn && stopBtn) {
-              startBtn.disabled = false;
-              stopBtn.disabled = true;
-            }
+      // 2) Popup after 10 minutes of idle (once per idle period)
+      if (!idlePopupShownForCurrentStop &&
+          idleTime >= STOP_TRACKING_PROMPT_IDLE_MS &&
+          isTracking) {
+
+        idlePopupShownForCurrentStop = true;
+
+        const stopNow = window.confirm(
+          "You've been stationary for 10 minutes. Do you want to stop tracking?"
+        );
+
+        if (stopNow) {
+          isTracking = false;
+          const startBtn = document.getElementById("startTracking");
+          const stopBtn  = document.getElementById("stopTracking");
+          if (startBtn && stopBtn) {
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
           }
         }
       }
     }
-  }
 
   // -----------------------------
   // Map update
