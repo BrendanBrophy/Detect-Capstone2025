@@ -245,7 +245,23 @@ window.addEventListener("DOMContentLoaded", () => {
               if (liveMarker) liveMarker.setLatLng([latestLat, latestLng]);
               if (autoFollow && map) map.setView([latestLat, latestLng]);
             },
-            (err) => alert("Error accessing device GPS: " + err.message),
+            (err) => {
+            console.log("Device GPS error:", err);
+
+              let extra = "";
+              if (err.code === err.PERMISSION_DENIED) {
+                extra = " (PERMISSION_DENIED)";
+              } else if (err.code === err.POSITION_UNAVAILABLE) {
+                extra = " (POSITION_UNAVAILABLE)";
+              } else if (err.code === err.TIMEOUT) {
+                extra = " (TIMEOUT)";
+              }
+
+              alert("Error accessing device GPS" + extra + ":\n" + err.message);
+            },
+
+
+
             { enableHighAccuracy: true, maximumAge: 30000, timeout: 60000 }
           );
           
