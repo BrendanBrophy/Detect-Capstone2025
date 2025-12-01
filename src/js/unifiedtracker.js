@@ -246,7 +246,7 @@ window.addEventListener("DOMContentLoaded", () => {
               if (autoFollow && map) map.setView([latestLat, latestLng]);
             },
             (err) => alert("Error accessing device GPS: " + err.message),
-            { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 }
+            { enableHighAccuracy: true, maximumAge: 30000, timeout: 60000 }
           );
           
         } else alert("Your browser does not support Geolocation.");
