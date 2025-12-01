@@ -224,124 +224,125 @@ window.addEventListener("DOMContentLoaded", () => {
     gpsBuffer = [];
   });
 
-// Device GPS button
-const gpsButton = document.getElementById("toggleDeviceGPS");
+  // Device GPS button
+  const gpsButton = document.getElementById("toggleDeviceGPS");
 
-if (gpsButton) {
-  gpsButton.addEventListener("click", () => {
+  if (gpsButton) {
+    gpsButton.addEventListener("click", () => {
 
-    // ----------------------
-    // TURNING GPS OFF
-    // ----------------------
-    if (usingDeviceGPS) {
-      if (geoWatchId !== null) {
-        navigator.geolocation.clearWatch(geoWatchId);
-        geoWatchId = null;
+      // ----------------------
+      // TURNING GPS OFF
+      // ----------------------
+      if (usingDeviceGPS) {
+        if (geoWatchId !== null) {
+          navigator.geolocation.clearWatch(geoWatchId);
+          geoWatchId = null;
+        }
+        gpsButton.textContent = "Use Device GPS";
+        gpsButton.style.backgroundColor = "#ffa500";   // keep your orange
+        usingDeviceGPS = false;
+        return;
       }
-      gpsButton.textContent = "Use Device GPS";
-      gpsButton.style.backgroundColor = "#ffa500";   // keep your orange
-      usingDeviceGPS = false;
-      return;
-    }
 
-    // ----------------------
-    // TURNING GPS ON
-    // ----------------------
-    if (!("geolocation" in navigator)) {
-      alert("This browser does not support Geolocation.");
-      return;
-    }
+      // ----------------------
+      // TURNING GPS ON
+      // ----------------------
+      if (!("geolocation" in navigator)) {
+        alert("This browser does not support Geolocation.");
+        return;
+      }
 
-    gpsButton.textContent = "Using Device GPS...";
-    gpsButton.style.backgroundColor = "#4CAF50";   // keep your green
-    usingDeviceGPS = true;
+      gpsButton.textContent = "Using Device GPS...";
+      gpsButton.style.backgroundColor = "#4CAF50";   // keep your green
+      usingDeviceGPS = true;
 
-    // --- COMMON SUCCESS HANDLER ---
-    const handlePosition = (pos) => {
-      latestLat = pos.coords.latitude;
-      latestLng = pos.coords.longitude;
-      currentHeading = pos.coords.heading ?? 0;
+      // --- COMMON SUCCESS HANDLER ---
+      const handlePosition = (pos) => {
+        latestLat = pos.coords.latitude;
+        latestLng = pos.coords.longitude;
+        currentHeading = pos.coords.heading ?? 0;
 
-      if (headingEl) headingEl.textContent = currentHeading + "°";
+        if (headingEl) headingEl.textContent = currentHeading + "°";
 
-      if (liveMarker) liveMarker.setLatLng([latestLat, latestLng]);
-      if (autoFollow && map) map.setView([latestLat, latestLng]);
-    };
+        if (liveMarker) liveMarker.setLatLng([latestLat, latestLng]);
+        if (autoFollow && map) map.setView([latestLat, latestLng]);
+      };
 
-    // --- FALLBACK MODE (behaves like "other websites") ---
-    const startFallback = () => {
-      console.warn("High-accuracy GPS failed. Switching to fallback mode.");
+      // --- FALLBACK MODE (behaves like "other websites") ---
+      const startFallback = () => {
+        console.warn("High-accuracy GPS failed. Switching to fallback mode.");
 
-      gpsButton.textContent = "Using Device GPS (Fallback)";
+        gpsButton.textContent = "Using Device GPS (Fallback)";
 
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          handlePosition(pos);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            handlePosition(pos);
 
-          // start relaxed continuous updates
-          geoWatchId = navigator.geolocation.watchPosition(
-            handlePosition,
-            (err) => {
-              console.error("Fallback watchPosition error:", err);
-              alert("Fallback GPS failed: " + err.message);
-            },
-            {
-              enableHighAccuracy: false,   // allow fused/cached
-              maximumAge: 300000,
-              timeout: 60000
-            }
-          );
-        },
+            // start relaxed continuous updates
+            geoWatchId = navigator.geolocation.watchPosition(
+              handlePosition,
+              (err) => {
+                console.error("Fallback watchPosition error:", err);
+                alert("Fallback GPS failed: " + err.message);
+              },
+              {
+                enableHighAccuracy: false,   // allow fused/cached
+                maximumAge: 300000,
+                timeout: 60000
+              }
+            );
+          },
+          (err) => {
+            console.error("Fallback getCurrentPosition error:", err);
+            alert(
+              "Could not get location even in fallback mode.\n" +
+              "Error code " + err.code + ": " + err.message
+            );
+            // Reset button
+            usingDeviceGPS = false;
+            gpsButton.textContent = "Use Device GPS";
+            gpsButton.style.backgroundColor = "#ffa500";
+          },
+          {
+            enableHighAccuracy: false,
+            maximumAge: 300000,
+            timeout: 60000
+          }
+        );
+      };
+
+      // --- FIRST TRY: TRUE GPS CHIP ---
+      geoWatchId = navigator.geolocation.watchPosition(
+        handlePosition,
         (err) => {
-          console.error("Fallback getCurrentPosition error:", err);
-          alert(
-            "Could not get location even in fallback mode.\n" +
-            "Error code " + err.code + ": " + err.message
-          );
-          // Reset button
-          usingDeviceGPS = false;
-          gpsButton.textContent = "Use Device GPS";
-          gpsButton.style.backgroundColor = "#ffa500";
+          console.log("Device GPS error:", err);
+
+          let extra = "";
+          if (err.code === err.PERMISSION_DENIED) extra = " (PERMISSION_DENIED)";
+          if (err.code === err.POSITION_UNAVAILABLE) extra = " (POSITION_UNAVAILABLE)";
+          if (err.code === err.TIMEOUT) extra = " (TIMEOUT)";
+
+          alert("High-accuracy GPS" + extra + ":\n" + err.message);
+
+          // If high-accuracy mode fails, try fallback
+          if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+            if (geoWatchId !== null) {
+              navigator.geolocation.clearWatch(geoWatchId);
+              geoWatchId = null;
+            }
+            startFallback();
+          }
         },
         {
-          enableHighAccuracy: false,
-          maximumAge: 300000,
-          timeout: 60000
+          enableHighAccuracy: true,   // use GPS chip
+          maximumAge: 0,              // super strict
+          timeout: 15000              // 15 sec for chip attempt
         }
       );
-    };
 
-    // --- FIRST TRY: TRUE GPS CHIP ---
-    geoWatchId = navigator.geolocation.watchPosition(
-      handlePosition,
-      (err) => {
-        console.log("Device GPS error:", err);
-
-        let extra = "";
-        if (err.code === err.PERMISSION_DENIED) extra = " (PERMISSION_DENIED)";
-        if (err.code === err.POSITION_UNAVAILABLE) extra = " (POSITION_UNAVAILABLE)";
-        if (err.code === err.TIMEOUT) extra = " (TIMEOUT)";
-
-        alert("High-accuracy GPS" + extra + ":\n" + err.message);
-
-        // If high-accuracy mode fails, try fallback
-        if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
-          if (geoWatchId !== null) {
-            navigator.geolocation.clearWatch(geoWatchId);
-            geoWatchId = null;
-          }
-          startFallback();
-        }
-      },
-      {
-        enableHighAccuracy: true,   // use GPS chip
-        maximumAge: 0,              // super strict
-        timeout: 15000              // 15 sec for chip attempt
-      }
-    );
-
-  });
-}});
+    });
+  }
+});
 
 // Update heading
 window.updateHeading = function(degrees) {
